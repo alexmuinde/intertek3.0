@@ -1,5 +1,6 @@
 const { default: User } = require("../models/userModel.js");
-const bycrypt = require('bcryptjs')
+const bycrypt = require('bcryptjs');
+const { errorHandler } = require("../utils/error.js");
 
 exports.signUp = async (req, res) => {
     //get the information you need from the browser
@@ -16,7 +17,7 @@ exports.signUp = async (req, res) => {
         res.status(201).json("User created successfully!")  
     } catch (error) {
         //send back the error
-        re.status(500).json(error.message)
+        next(error) 
     }
     
 

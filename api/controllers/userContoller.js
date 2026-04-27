@@ -3,7 +3,7 @@
 } */
 
 exports.test = (req, res) => {
-    res.send('API route is working');
+    res.send('API route is working mf');
 };
 
 
