@@ -1,4 +1,16 @@
 const express = require('express')
+const mongoose = require('mongoose')
+const dotenv = require('dotenv')
+
+dotenv.config()
+
+const dns = require("dns"); dns.setServers(["1.1.1.1", "8.8.8.8"]);
+
+mongoose.connect(process.env.MONGO).then(() => {
+    console.log('Connected to MongoDB!');
+}).catch((err) => {
+    console.log(err)
+})
 
 const app = express();
 
