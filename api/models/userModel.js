@@ -1,11 +1,25 @@
-const mongoose = require('mongoose');
+/**const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
     username: {type: String, required: true, unique: true},
     email: {type: String, required: true, unique: true},
-    pin: {type: String, required: true, minlength: 4, maxlength: 5, match: /^[0-9]+$/}
+    pin: {type: String, required: true}
 }, {timestamp: true});
 
 const User = mongoose.model('User', userSchema);
 
 module.exports = User;
+ */
+
+const mongoose = require('mongoose');
+
+const userSchema = new mongoose.Schema({
+    username: { type: String, required: true, unique: true },
+    email: { type: String, required: true, unique: true },
+    pin: { type: String, required: true }
+}, { timestamps: true });
+
+const User = mongoose.model('User', userSchema);
+
+// This must match the 'const User = require(...)' in your controller
+module.exports = User; 

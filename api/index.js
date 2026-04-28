@@ -9,11 +9,23 @@ dotenv.config()
 const dns = require("dns");const e = require('express');
  dns.setServers(["1.1.1.1", "8.8.8.8"]);
 
-mongoose.connect(process.env.MONGO).then(() => {
+/**mongoose.connect(process.env.MONGO).then(() => {
     console.log('Connected to MongoDB!');
 }).catch((err) => {
     console.log(err)
-})
+}) */
+
+mongoose.connect(process.env.MONGO)
+  .then(() => console.log('Connected to MongoDB!'))
+  .catch((err) => {
+    console.error('DATABASE CONNECTION ERROR:', err.message); // This will show you WHY it's failing
+  });
+
+// Add this to listen for errors that happen AFTER the initial connection
+mongoose.connection.on('error', err => {
+  console.error('Mongoose secondary connection error:', err);
+});
+
 
 const app = express();
 
