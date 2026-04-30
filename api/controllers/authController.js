@@ -10,7 +10,7 @@ exports.signUp = async (req, res, next) => {
 
 	try {
 		// 1. Hash the pin
-		const hashedPin = bycrypt.hashSync(pin, 10);
+		const hashedPin = bcryptjs.hashSync(pin, 10);
 
 		// 2. Create the new user instance
 		const newUser = new User({ username, email, pin: hashedPin });
