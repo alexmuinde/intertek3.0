@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import OAuth from "../components/OAuth";
 
 export default function signUp() {
 	//create a piece of state to track all the changes
@@ -65,7 +66,7 @@ export default function signUp() {
 					type="password"
 					placeholder="PIN"
 					className="border p-3 rounded-lg"
-					id="pin"
+					id="password"
 					onChange={handleChange}
 				/>
 				<button
@@ -74,6 +75,7 @@ export default function signUp() {
 				>
 					{loading ? "Loading..." : "Sign Up"}
 				</button>
+				<OAuth />
 			</form>
 			<div className="flex gap-2 mt-5">
 				<p>Have an account?</p>

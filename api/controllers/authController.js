@@ -6,71 +6,71 @@ const jwt = require("jsonwebtoken");
 
 // Add 'next' here so you can pass errors to your middleware
 exports.signUp = async (req, res, next) => {
-	const { username, email, pin } = req.body;
-
+	const { username, email, password } = req.body; // destructuring 'password'
 	try {
-		// 1. Hash the pin
-		const hashedPin = bcryptjs.hashSync(pin, 10);
-
-		// 2. Create the new user instance
-		const newUser = new User({ username, email, pin: hashedPin });
-
-		// 3. Save to MongoDB (Must be inside try block)
+		const hashedPassword = bcryptjs.hashSync(password, 10);
+		const newUser = new User({ username, email, password: hashedPassword });
 		await newUser.save();
-
-		// 4. Send success response
 		res.status(201).json({ message: "User created successfully!" });
 	} catch (error) {
-		// This will now catch duplicate emails or database connection issues
 		next(error);
 	}
 };
 
 exports.signIn = async (req, res, next) => {
-	const { email, pin } = req.body;
+	const { email, password } = req.body;
 
 	try {
-		//check if the user exist
 		const validUser = await User.findOne({ email });
-		//if the user does not exist
 		if (!validUser) return next(errorHandler(404, "User not found!"));
-		//check if the PIN matches
-		const validPIN = bcryptjs.compareSync(pin, validUser.pin);
-		//if the user does not exist
-		if (!validPIN) return next(errorHandler(401, "Wrong credentials!"));
-		//authenticate the user by creating a token
+
+		// Use 'password' from your User model
+		const validPassword = bcryptjs.compareSync(password, validUser.password);
+		if (!validPassword) return next(errorHandler(401, "Wrong credentials!"));
+
+		// Ensure JWT_SECRET is in your .env file
 		const token = jwt.sign({ id: validUser._id }, process.env.JWT_SECRET);
-		//before sending the valid user, remove the PIN from the rest
-		const { pin: password, ...rest } = validUser._doc;
-		//save the token as the cookie
+
+		// RENAME the destructured password to avoid the 500 error conflict
+		const { password: hashedPass, ...rest } = validUser._doc;
+
 		res.cookie("accessToken", token, { httpOnly: true }).status(200).json(rest);
+	} catch (error) {
+		next(error); // This will pass the specific error to your error middleware
+	}
+};
+
+exports.google = async (req, res, next) => {
+	try {
+		const user = await User.findOne({ email: req.body.email });
+
+		if (user) {
+			const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
+			const { password: pass, ...rest } = user._doc;
+			res
+				.cookie("accessToken", token, { httpOnly: true })
+				.status(200)
+				.json(rest);
+		} else {
+			const generatedPassword = Math.random().toString(36).slice(-8);
+			const hashedPassword = bcryptjs.hashSync(generatedPassword, 10);
+			const newUser = new User({
+				username:
+					req.body.name.split(" ").join("").toLowerCase() +
+					Math.random().toString(36).slice(-4),
+				email: req.body.email,
+				password: hashedPassword,
+				avatar: req.body.photo,
+			});
+			await newUser.save();
+			const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET);
+			const { password: pass, ...rest } = newUser._doc;
+			res
+				.cookie("accessToken", token, { httpOnly: true })
+				.status(200)
+				.json(rest);
+		}
 	} catch (error) {
 		next(error);
 	}
 };
-
-/**const User = require("../models/userModel.js"); // CORRECT
-
-const bycrypt = require('bcryptjs');
-const { errorHandler } = require("../utils/error.js");
-
-exports.signUp = async (req, res) => {
-    //get the information you need from the browser
-    const {username, email, pin} = req.body;
-    //after getting the pin, hash it 
-    const hashedPin = bycrypt.hashSync(pin, 10)
-    //create a new user using the user model and pass the hashed password
-    const newUser = new User({username, email, pin: hashedPin})
-    //save the user
-    await newUser.save()
-    //catch an error
-    try {
-        //create a response 
-        res.status(201).json("User created successfully!")  
-    } catch (error) {
-        //send back the error
-        next(error) 
-    }
-    
-
-} */
