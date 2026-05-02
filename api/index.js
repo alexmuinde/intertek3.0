@@ -4,6 +4,7 @@ const dotenv = require("dotenv");
 const cookieParser = require("cookie-parser"); // 1. Import cookie-parser
 const userRouter = require("./routes/userRoute.js");
 const authRouter = require("./routes/authRoute.js");
+const wheighBridgeRouter = require("./routes/wheighBridgeRoute.js");
 
 dotenv.config();
 
@@ -26,6 +27,7 @@ app.use(cookieParser()); // 2. Initialize cookie-parser here
 // --- ROUTES SECTION ---
 app.use("/api/user", userRouter);
 app.use("/api/auth", authRouter);
+app.use("/api/wheighBridge", wheighBridgeRouter);
 
 // --- ERROR HANDLING ---
 app.use((err, req, res, next) => {
