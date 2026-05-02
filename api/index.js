@@ -1,4 +1,48 @@
-const express = require('express')
+const express = require("express");
+const mongoose = require("mongoose");
+const dotenv = require("dotenv");
+const cookieParser = require("cookie-parser"); // 1. Import cookie-parser
+const userRouter = require("./routes/userRoute.js");
+const authRouter = require("./routes/authRoute.js");
+
+dotenv.config();
+
+const dns = require("dns");
+dns.setServers(["1.1.1.1", "8.8.8.8"]);
+
+mongoose
+	.connect(process.env.MONGO)
+	.then(() => console.log("Connected to MongoDB!"))
+	.catch((err) => {
+		console.error("DATABASE CONNECTION ERROR:", err.message);
+	});
+
+const app = express();
+
+// --- MIDDLEWARE SECTION ---
+app.use(express.json());
+app.use(cookieParser()); // 2. Initialize cookie-parser here
+
+// --- ROUTES SECTION ---
+app.use("/api/user", userRouter);
+app.use("/api/auth", authRouter);
+
+// --- ERROR HANDLING ---
+app.use((err, req, res, next) => {
+	const statusCode = err.statusCode || 500;
+	const message = err.message || "Internal Server Error";
+	return res.status(statusCode).json({
+		success: false,
+		statusCode,
+		message,
+	});
+});
+
+app.listen(3000, () => {
+	console.log("Server is running on port 3000!!!");
+});
+
+/**const express = require('express')
 const mongoose = require('mongoose')
 const dotenv = require('dotenv')
 const userRouter = require('./routes/userRoute.js');
@@ -9,11 +53,7 @@ dotenv.config()
 const dns = require("dns");const e = require('express');
  dns.setServers(["1.1.1.1", "8.8.8.8"]);
 
-/**mongoose.connect(process.env.MONGO).then(() => {
-    console.log('Connected to MongoDB!');
-}).catch((err) => {
-    console.log(err)
-}) */
+
 
 mongoose.connect(process.env.MONGO)
   .then(() => console.log('Connected to MongoDB!'))
@@ -45,4 +85,4 @@ app.use((err, req, res, next) =>{
     return res.status(statusCode).json({
         success: false, statusCode, message
     })
-})
+}) */
