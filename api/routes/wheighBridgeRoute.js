@@ -1,7 +1,10 @@
 // 1. Change 'import' to 'const ... = require'
 const express = require("express");
 const {
-	createWheighBridge,
+	getAllWheighBridges,
+	saveWheighBridge,
+	getWheighBridge,
+	getEveryonesDocs,
 } = require("../controllers/wheighBridgeController.js");
 const { verifyToken } = require("../utils/verifyUser.js");
 
@@ -9,7 +12,10 @@ const { verifyToken } = require("../utils/verifyUser.js");
 const router = express.Router();
 
 // 3. Define the POST route for creating a weigh bridge
-router.post("/create", verifyToken, createWheighBridge);
+router.post("/save", verifyToken, saveWheighBridge);
+router.get("/getall", verifyToken, getAllWheighBridges);
+router.get("/get/:id", verifyToken, getWheighBridge);
+router.get("/geteveryones", getEveryonesDocs);
 
 // 4. Use module.exports instead of 'export default'
 module.exports = router;

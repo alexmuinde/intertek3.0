@@ -1,22 +1,52 @@
-const { default: wheighBridge } = require("../models/wheighBridgeModel.js");
+const mongoose = require("mongoose");
+const WheighBridge = require("../models/wheighBridgeModel.js");
+const factory = require("./handlerFactory.js");
 
-// Export the function using CommonJS 'exports' syntax
-exports.createWheighBridge = async (req, res, next) => {
-	// Start a try-catch block to handle asynchronous database operations
-	try {
-		// Logic: You will add your WeighBridge.create(req.body) logic here
-		const wheighBridge = await wheighBridge.create(req.body);
-		return res.status(201).json(wheighBridge);
-	} catch (error) {
-		// Logic: If any error occurs, pass it to the global error middleware
-		next(error);
-	}
-};
+exports.saveWheighBridge = factory.saveDocument(WheighBridge);
 
-/**export const createWheighBridge = async (req, res, next) => {
+// Example for getting all user WeighBridges
+exports.getAllWheighBridges = async (req, res, next) => {
 	try {
+		const userId = req.user.id;
+		const documents = await WheighBridge.find({ userRef: userId }).sort({
+			updatedAt: -1,
+		}); // -1 means newest first
+		res.status(200).json(documents);
 	} catch (error) {
 		next(error);
 	}
 };
- */
+
+exports.getWheighBridge = async (req, res, next) => {
+	try {
+		const report = await WheighBridge.findById(req.params.id);
+		if (!report)
+			return res
+				.status(404)
+				.json({ success: false, message: "Report not found" });
+
+		// Add this security check
+		if (report.userRef.toString() !== req.user.id) {
+			return res
+				.status(403)
+				.json({ success: false, message: "Unauthorized access" });
+		}
+
+		res.status(200).json(report);
+	} catch (error) {
+		next(error);
+	}
+};
+
+// Create a new public fetcher
+exports.getEveryonesDocs = async (req, res, next) => {
+	try {
+		// Change 'Model' to 'WheighBridge'
+		const documents = await WheighBridge.find()
+			.populate("userRef", "username avatar")
+			.sort({ updatedAt: -1 });
+		res.status(200).json(documents);
+	} catch (error) {
+		next(error);
+	}
+};

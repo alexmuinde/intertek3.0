@@ -1,8 +1,6 @@
-// Import Redux hooks to access global state and send actions
 import { useSelector, useDispatch } from "react-redux";
-// Import React hooks for DOM references, local state, and side effects
-import { useRef, useState, useEffect } from "react";
-// Import action creators for the update process lifecycle
+import { useState, useEffect, useRef } from "react";
+import { Link } from "react-router-dom";
 import {
 	updateUserStart,
 	updateUserSuccess,
@@ -10,188 +8,306 @@ import {
 } from "../redux/user/userSlice.js";
 
 export default function Profile() {
-	// Create a reference to the hidden file input to trigger it via the profile image
-	const fileRef = useRef(null);
-	// Initialize dispatch to communicate with the Redux store
-	const dispatch = useDispatch();
-	// Pull user data, loading status, and error messages from the global 'user' state
 	const { currentUser, loading, error } = useSelector((state) => state.user);
-	// Local state to store the raw file object when a user selects an image
-	const [file, setFile] = useState(undefined);
+	const dispatch = useDispatch();
+	const fileRef = useRef(null);
 
-	// Local state to track the Cloudinary upload progress percentage (0 to 100)
+	// Profile Form States
+	const [file, setFile] = useState(undefined);
 	const [filePerc, setFilePerc] = useState(0);
-	// Local state to track if the image upload to Cloudinary failed
 	const [fileUploadError, setFileUploadError] = useState(false);
-	// Local state to show a success message after the database update is finished
+	const [formData, setFormData] = useState({});
 	const [updateSuccess, setUpdateSuccess] = useState(false);
 
-	// Local state to store only the fields being updated (username, email, avatar, etc.)
-	const [formData, setFormData] = useState({});
+	// Workspace/Dashboard States
+	const [userDocs, setUserDocs] = useState({ weighBridges: [], sof: [] });
+	const [loadingDocs, setLoadingDocs] = useState(true);
+	const [activeTab, setActiveTab] = useState("WB");
 
-	// Side effect: whenever the 'file' state changes, start the upload process
+	// Trigger image upload whenever a file is selected
 	useEffect(() => {
-		if (file) {
-			handleFileUpload(file);
-		}
+		if (file) handleFileUpload(file[0]);
 	}, [file]);
 
-	// Function to handle the asynchronous upload of the image file to Cloudinary
-	const handleFileUpload = (file) => {
-		// Set your unique Cloudinary account identifier (found in your Dashboard)
-		const cloudName = "dnxmcdha2";
-		// Set the 'Unsigned' upload preset name created in your Cloudinary settings
-		const uploadPreset = "intertek";
-		// Construct the official Cloudinary API URL using your cloud name
-		const url = `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`;
+	// Fetch documents only belonging to current user
+	useEffect(() => {
+		const fetchUserDocs = async () => {
+			try {
+				setLoadingDocs(true);
+				const [wbRes, sofRes] = await Promise.all([
+					fetch(`/api/wheighBridge/getall`),
+					fetch(`/api/statementOfFacts/getall`),
+				]);
 
-		// Create a new XMLHttpRequest object to handle the request and track upload progress
-		const xhr = new XMLHttpRequest();
-		// Create a FormData object to package the file and preset for a multi-part/form-data request
-		const fd = new FormData();
-		// Initialize the request: set the method to POST, the target URL, and make it asynchronous
-		xhr.open("POST", url, true);
+				const wbData = await wbRes.json();
+				const sofData = await sofRes.json();
 
-		// Logic: Listen for the 'progress' event to calculate how much of the file has been sent
-		xhr.upload.addEventListener("progress", (e) => {
-			// Calculate the percentage: (bytes uploaded / total bytes) * 100
-			const progress = Math.round((e.loaded * 100.0) / e.total);
-			// Update the local state to show the percentage in the UI (e.g., "Uploading 50%")
-			setFilePerc(progress);
-		});
+				// Debugging: Check your console to see what the empty one looks like
+				console.log("WB Data:", wbData);
+				console.log("SOF Data:", sofData);
 
-		// Logic: Listen for the request completion or status changes
-		xhr.onreadystatechange = () => {
-			// readyState 4 means the communication with Cloudinary is completely finished
-			if (xhr.readyState === 4) {
-				// Status 200 means the image was successfully received and stored by Cloudinary
-				if (xhr.status === 200) {
-					// Parse the JSON string sent back by Cloudinary into a readable object
-					const response = JSON.parse(xhr.responseText);
-					// Logic: Extract the public URL (secure_url) and add it to our formData state
-					setFormData({ ...formData, avatar: response.secure_url });
-					// Reset the error state since the upload was successful
-					setFileUploadError(false);
-				} else {
-					// If the status is not 200, log the error message from Cloudinary for debugging
-					console.error("Cloudinary Error:", xhr.responseText);
-					// Set the error state to true to display the "Error Image upload" message in UI
-					setFileUploadError(true);
-				}
+				setUserDocs({
+					// Ensure we handle both direct arrays and {success, data} wrappers
+					weighBridges: Array.isArray(wbData) ? wbData : wbData.data || [],
+					sof: Array.isArray(sofData) ? sofData : sofData.data || [],
+				});
+			} catch (err) {
+				console.error("Dashboard Load Error:", err);
+			} finally {
+				setLoadingDocs(false);
 			}
 		};
+		if (currentUser?._id) fetchUserDocs();
+	}, [currentUser._id]);
 
-		// Add the upload preset name to the form package (required for unsigned uploads)
-		fd.append("upload_preset", uploadPreset);
-		// Logic: Extract the first file from the file list and add it to the package
-		// Note: file[0] is used because e.target.files returns a list, even for single files
-		fd.append("file", file[0]);
-		// Actually execute the request and send the data to the cloud
-		xhr.send(fd);
-	};
-
-	// Update local formData state whenever a user types in an input field
 	const handleChange = (e) => {
 		setFormData({ ...formData, [e.target.id]: e.target.value });
 	};
 
-	// Handle the final form submission to save data to your own backend
+	const handleFileUpload = (file) => {
+		const cloudName = "dnxmcdha2";
+		const uploadPreset = "intertek";
+		const url = `https://cloudinary.com{cloudName}/image/upload`;
+		const xhr = new XMLHttpRequest();
+		const fd = new FormData();
+		xhr.open("POST", url, true);
+
+		xhr.upload.addEventListener("progress", (e) => {
+			const progress = Math.round((e.loaded * 100.0) / e.total);
+			setFilePerc(progress);
+		});
+
+		xhr.onreadystatechange = () => {
+			if (xhr.readyState === 4) {
+				if (xhr.status === 200) {
+					const response = JSON.parse(xhr.responseText);
+					setFormData({ ...formData, avatar: response.secure_url });
+					setFileUploadError(false);
+				} else {
+					setFileUploadError(true);
+				}
+			}
+		};
+		fd.append("upload_preset", uploadPreset);
+		fd.append("file", file);
+		xhr.send(fd);
+	};
+
 	const handleSubmit = async (e) => {
-		e.preventDefault(); // Stop the page from refreshing
+		e.preventDefault();
 		try {
-			dispatch(updateUserStart()); // Set loading state to true in Redux
-			// Send the updated data to your Node.js API
+			dispatch(updateUserStart());
 			const res = await fetch(`/api/user/update/${currentUser._id}`, {
-				method: "POST", // HTTP method defined in your backend routes
-				headers: { "Content-Type": "application/json" }, // Tell backend to expect JSON
-				body: JSON.stringify(formData), // Convert state object to JSON string
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(formData),
 			});
-			const data = await res.json(); // Parse the response from your server
+			const data = await res.json();
 			if (data.success === false) {
-				dispatch(updateUserFailure(data.message)); // Send error to Redux if update failed
+				dispatch(updateUserFailure(data.message));
 				return;
 			}
-			dispatch(updateUserSuccess(data)); // Save updated user info to Redux on success
-			setUpdateSuccess(true); // Show the success message at the bottom of the form
+			dispatch(updateUserSuccess(data));
+			setUpdateSuccess(true);
 		} catch (error) {
-			dispatch(updateUserFailure(error.message)); // Catch network errors
+			dispatch(updateUserFailure(error.message));
 		}
 	};
 
 	return (
-		<div className="p-3 max-w-lg mx-auto">
-			<h1 className="text-3xl font-semibold text-center my-7">Profile</h1>
-			<form onSubmit={handleSubmit} className="flex flex-col gap-4">
-				{/* Hidden file input that only accepts images */}
-				<input
-					type="file"
-					ref={fileRef}
-					hidden
-					accept="image/*"
-					onChange={(e) => setFile(e.target.files)}
-				/>
-				{/* Profile image that acts as a button to trigger the hidden file input */}
-				<img
-					onClick={() => fileRef.current.click()}
-					src={formData.avatar || currentUser.avatar}
-					alt="profile"
-					className="rounded-full h-24 w-24 object-cover cursor-pointer self-center mt-2"
-				/>
+		<div className="max-w-7xl mx-auto p-4 font-serif">
+			<div className="flex flex-col lg:flex-row gap-8">
+				{/* LEFT: Profile Form */}
+				<div className="flex-1 bg-white p-6 rounded-xl shadow-sm border border-gray-100 h-fit">
+					<h2 className="text-xl font-bold mb-6 text-slate-800 border-b pb-2">
+						Profile Settings
+					</h2>
+					<form onSubmit={handleSubmit} className="flex flex-col gap-5">
+						<input
+							type="file"
+							ref={fileRef}
+							hidden
+							accept="image/*"
+							onChange={(e) => setFile(e.target.files)}
+						/>
+						<div className="relative self-center group">
+							<img
+								onClick={() => fileRef.current.click()}
+								src={formData.avatar || currentUser.avatar}
+								alt="profile"
+								className="rounded-full h-28 w-28 object-cover cursor-pointer border-4 border-gray-50 group-hover:opacity-90 transition-all"
+							/>
+							{filePerc > 0 && filePerc < 100 && (
+								<div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full text-white text-xs font-bold">
+									{filePerc}%
+								</div>
+							)}
+						</div>
+						<p className="text-[10px] text-center uppercase tracking-widest font-bold">
+							{fileUploadError ? (
+								<span className="text-red-500">Upload Failed</span>
+							) : filePerc === 100 ? (
+								<span className="text-green-600">Sync Complete</span>
+							) : (
+								"Click image to change"
+							)}
+						</p>
 
-				{/* Display upload status messages (Error, Progress, or Success) */}
-				<p className="text-sm self-center">
-					{fileUploadError ? (
-						<span className="text-red-700">
-							Error Image upload (file must be less than 2MB)
-						</span>
-					) : filePerc > 0 && filePerc < 100 ? (
-						<span className="text-slate-700">{`Uploading ${filePerc}%`}</span>
-					) : filePerc === 100 ? (
-						<span className="text-green-700">Image successfully uploaded!</span>
-					) : (
-						""
+						<div className="space-y-4">
+							<input
+								onChange={handleChange}
+								type="text"
+								id="username"
+								defaultValue={currentUser.username}
+								className="w-full border p-3 rounded-lg text-sm bg-gray-50 focus:bg-white outline-none transition-all"
+								placeholder="Username"
+							/>
+							<input
+								onChange={handleChange}
+								type="email"
+								id="email"
+								defaultValue={currentUser.email}
+								className="w-full border p-3 rounded-lg text-sm bg-gray-50 focus:bg-white outline-none transition-all"
+								placeholder="Email"
+							/>
+							<input
+								onChange={handleChange}
+								type="password"
+								id="password"
+								className="w-full border p-3 rounded-lg text-sm bg-gray-50 focus:bg-white outline-none transition-all"
+								placeholder="New Password"
+							/>
+						</div>
+
+						<button
+							disabled={loading}
+							className="bg-slate-900 text-white rounded-lg p-3 uppercase font-bold text-xs hover:bg-black disabled:bg-slate-400 transition-all shadow-lg"
+						>
+							{loading ? "Syncing..." : "Update Credentials"}
+						</button>
+					</form>
+					{updateSuccess && (
+						<p className="text-green-600 text-xs mt-4 text-center font-bold">
+							Account updated successfully!
+						</p>
 					)}
-				</p>
+					{error && (
+						<p className="text-red-600 text-xs mt-4 text-center">{error}</p>
+					)}
+				</div>
 
-				{/* Input fields synced with database keys (username, email, password) using 'id' */}
-				<input
-					onChange={handleChange}
-					type="text"
-					placeholder="username"
-					id="username"
-					defaultValue={currentUser.username}
-					className="border p-3 rounded-lg shadow-md"
-				/>
-				<input
-					onChange={handleChange}
-					type="email"
-					placeholder="email"
-					id="email"
-					defaultValue={currentUser.email}
-					className="border p-3 rounded-lg shadow-md"
-				/>
-				<input
-					onChange={handleChange}
-					type="password"
-					placeholder="password"
-					id="password"
-					className="border p-3 rounded-lg shadow-md"
-				/>
-				{/* Submit button: disabled while the request is loading to prevent duplicate entries */}
-				<button
-					disabled={loading}
-					className="bg-slate-700 text-white rounded-lg p-3 uppercase hover:opacity-90 disabled:opacity-80"
-				>
-					{loading ? "Loading..." : "Update"}
-				</button>
-			</form>
+				{/* RIGHT: Workspace Dashboard */}
+				<div className="flex-[2] flex flex-col gap-6">
+					<h2 className="text-xl font-bold text-slate-800 border-b pb-2">
+						My Workspace
+					</h2>
 
-			{/* Global error messages from Redux */}
-			<p className="text-red-700 mt-5 text-center">{error ? error : ""}</p>
-			{/* Local success message after database update */}
-			<p className="text-green-700 mt-5 text-center">
-				{updateSuccess ? "User updated successfully!" : ""}
-			</p>
+					{/* Navigation Cards */}
+					<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+						<div
+							onClick={() => setActiveTab("WB")}
+							className={`cursor-pointer p-5 rounded-lg border-l-8 transition-all ${activeTab === "WB" ? "bg-green-50 border-green-600 shadow-md ring-1 ring-green-200" : "bg-white border-gray-200 opacity-60 hover:opacity-100 shadow-sm"}`}
+						>
+							<div className="flex justify-between items-start mb-2">
+								<h3 className="font-bold text-green-800 text-xs uppercase tracking-tighter">
+									WeighBridge Records
+								</h3>
+								<Link
+									to="/wheighBridge"
+									className="bg-green-600 text-white text-[9px] px-2 py-1 rounded font-bold hover:bg-green-700"
+								>
+									+ NEW
+								</Link>
+							</div>
+							<p className="text-4xl font-black text-green-900">
+								{userDocs.weighBridges.length}
+							</p>
+						</div>
+
+						<div
+							onClick={() => setActiveTab("SOF")}
+							className={`cursor-pointer p-5 rounded-lg border-l-8 transition-all ${activeTab === "SOF" ? "bg-blue-50 border-blue-600 shadow-md ring-1 ring-blue-200" : "bg-white border-gray-200 opacity-60 hover:opacity-100 shadow-sm"}`}
+						>
+							<div className="flex justify-between items-start mb-2">
+								<h3 className="font-bold text-blue-800 text-xs uppercase tracking-tighter">
+									Statement of Facts
+								</h3>
+								<Link
+									to="/statementOfFacts"
+									className="bg-blue-600 text-white text-[9px] px-2 py-1 rounded font-bold hover:bg-blue-700"
+								>
+									+ NEW
+								</Link>
+							</div>
+							<p className="text-4xl font-black text-blue-900">
+								{userDocs.sof.length}
+							</p>
+						</div>
+					</div>
+
+					{/* List Table */}
+					<div className="bg-white border rounded-xl overflow-hidden shadow-sm">
+						<div
+							className={`px-4 py-3 text-white text-[10px] font-bold uppercase tracking-widest ${activeTab === "WB" ? "bg-green-800" : "bg-blue-800"}`}
+						>
+							Viewing{" "}
+							{activeTab === "WB" ? "Logistics Records" : "Vessel Operations"}
+						</div>
+						<div className="max-h-[500px] overflow-y-auto">
+							{loadingDocs ? (
+								<div className="p-20 text-center animate-pulse text-gray-400 font-bold uppercase text-xs">
+									Accessing Database...
+								</div>
+							) : (activeTab === "WB" ? userDocs.weighBridges : userDocs.sof)
+									.length === 0 ? (
+								<div className="p-20 text-center text-gray-300 italic">
+									Empty Archive
+								</div>
+							) : (
+								<table className="w-full text-left border-collapse">
+									<thead className="bg-gray-50/50 sticky top-0 text-[10px] uppercase text-gray-500 font-bold border-b">
+										<tr>
+											<th className="px-6 py-3">
+												{activeTab === "WB" ? "Truck Number" : "Vessel Name"}
+											</th>
+											<th className="px-6 py-3">Last Modified</th>
+											<th className="px-6 py-3 text-right">Link</th>
+										</tr>
+									</thead>
+									<tbody className="text-sm">
+										{(activeTab === "WB"
+											? userDocs.weighBridges
+											: userDocs.sof
+										).map((doc) => (
+											<tr key={doc._id} className="border-t hover:bg-gray-50">
+												<td className="px-4 py-3 font-medium">
+													{/* Your SOF JSON uses 'vessel', make sure WB uses 'truckNumber' */}
+													{activeTab === "WB" ? doc.truckNumber : doc.vessel}
+												</td>
+												<td className="px-4 py-3 text-gray-500">
+													{new Date(doc.updatedAt).toLocaleDateString()}
+												</td>
+												<td className="px-4 py-3 text-right">
+													<Link
+														to={
+															activeTab === "WB"
+																? `/wheighBridge/${doc._id}`
+																: `/statementOfFacts/${doc._id}`
+														}
+														className="text-blue-600 font-bold"
+													>
+														Edit
+													</Link>
+												</td>
+											</tr>
+										))}
+									</tbody>
+								</table>
+							)}
+						</div>
+					</div>
+				</div>
+			</div>
 		</div>
 	);
 }
