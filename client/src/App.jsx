@@ -8,6 +8,8 @@ import Header from "./components/header";
 import PrivateRoute from "./components/PrivateRoute";
 import WheighBridge from "./pages/wheighBridge";
 import StatementOfFacts from "./pages/statementOfFacts";
+import SealingReport from "./pages/sealingReport";
+import VesselExperienceFactor from "./pages/vesselExperienceFactor";
 
 export default function App() {
 	return (
@@ -22,6 +24,11 @@ export default function App() {
 					<Route path="/profile" element={<Profile />} />
 					<Route path="/wheighBridge/:id?" element={<WheighBridge />} />
 					<Route path="/statementOfFacts/:id?" element={<StatementOfFacts />} />
+					<Route path="/sealingReport/:id?" element={<SealingReport />} />
+					<Route
+						path="/vesselExperienceFactor/:id?"
+						element={<VesselExperienceFactor />}
+					/>
 				</Route>
 			</Routes>
 		</BrowserRouter>

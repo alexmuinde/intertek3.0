@@ -6,6 +6,8 @@ const userRouter = require("./routes/userRoute.js");
 const authRouter = require("./routes/authRoute.js");
 const wheighBridgeRouter = require("./routes/wheighBridgeRoute.js");
 const statementOfFactsRouter = require("./routes/statementOfFactsRoute.js");
+const sealingReportRouter = require("./routes/sealingReportRoute.js");
+const vesselExperienceFactorRouter = require("./routes/vesselExperienceFactorRoute.js");
 
 dotenv.config();
 
@@ -30,6 +32,8 @@ app.use("/api/user", userRouter);
 app.use("/api/auth", authRouter);
 app.use("/api/wheighBridge", wheighBridgeRouter);
 app.use("/api/statementOfFacts", statementOfFactsRouter);
+app.use("/api/sealingReport", sealingReportRouter);
+app.use("/api/vesselExperienceFactor", vesselExperienceFactorRouter);
 
 // --- ERROR HANDLING ---
 app.use((err, req, res, next) => {
