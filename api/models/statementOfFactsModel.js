@@ -23,7 +23,8 @@ const sofSchema = new mongoose.Schema(
 		],
 		// --- THE USER REFERENCE FIELD ---
 		userRef: {
-			type: String, // Or mongoose.Schema.Types.ObjectId if referencing User model
+			type: mongoose.Schema.Types.ObjectId, // MUST be ObjectId, not String
+			ref: "User", // MUST match your User model name
 			required: true,
 		},
 	},

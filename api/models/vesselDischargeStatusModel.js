@@ -1,18 +1,25 @@
 const mongoose = require("mongoose");
 
-const sealingReportSchema = new mongoose.Schema(
+const vesselDischargeStatusSchema = new mongoose.Schema(
 	{
 		vessel: { type: String, required: true },
-		port: { type: String, required: true },
 		date: { type: Date, required: true },
-		cargo: { type: String, required: true },
-		// Changed 'entries' to 'seals' to match your report logic
-		seals: [
+		berthNumber: { type: String },
+		shipTanks: { type: String },
+		gradeBl: { type: String },
+		dischargeLogs: [
 			{
-				location: String,
-				sealNumber: String,
+				date: String,
+				time: String,
+				manifoldNo: String,
+				pressure: String,
+				temp: String,
+				rob: String,
+				qty: String,
+				rate: String,
 			},
 		],
+		remarks: { type: String },
 		inspectorName: { type: String, required: true },
 		representatives: [
 			{
@@ -21,7 +28,6 @@ const sealingReportSchema = new mongoose.Schema(
 				email: String,
 			},
 		],
-		// Links the report to the specific Intertek inspector
 		userRef: {
 			type: mongoose.Schema.Types.ObjectId, // MUST be ObjectId, not String
 			ref: "User", // MUST match your User model name
@@ -31,5 +37,7 @@ const sealingReportSchema = new mongoose.Schema(
 	{ timestamps: true },
 );
 
-const SealingReport = mongoose.model("SealingReport", sealingReportSchema);
-module.exports = SealingReport;
+module.exports = mongoose.model(
+	"VesselDischargeStatus",
+	vesselDischargeStatusSchema,
+);

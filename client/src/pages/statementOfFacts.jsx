@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 
 export default function StatementOfFacts() {
 	const { currentUser } = useSelector((state) => state.user);
 	const { id } = useParams();
+	const navigate = useNavigate();
 	const [formData, setFormData] = useState({
 		vessel: "",
 		port: "",
@@ -35,34 +36,6 @@ export default function StatementOfFacts() {
 		});
 	};
 
-	const handleSave = async () => {
-		if (!currentUser) return alert("You must be logged in to save!");
-
-		setLoading(true);
-		try {
-			const res = await fetch("/api/statementOfFacts/save", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					...formData,
-					userRef: currentUser._id, // Attach the creator's ID
-					...(id && { _id: id }), // Attach existing ID only if editing
-				}),
-			});
-
-			const data = await res.json();
-			if (data.success === false) {
-				console.error(data.message);
-				return;
-			}
-			alert("Document Saved!");
-		} catch (err) {
-			console.error("Save Error:", err);
-		} finally {
-			setLoading(false);
-		}
-	};
-
 	// Function to remove a specific event row
 	const removeEntry = (index) => {
 		// Only allow deletion if there is more than one row
@@ -73,33 +46,6 @@ export default function StatementOfFacts() {
 			alert("At least one event entry is required.");
 		}
 	};
-
-	useEffect(() => {
-		// Only fetch if an 'id' exists in the URL (Edit mode)
-		if (id) {
-			const fetchDocument = async () => {
-				try {
-					setLoading(true);
-					const res = await fetch(`/api/statementOfFacts/get/${id}`);
-					const data = await res.json();
-
-					if (data.success === false) {
-						console.error(data.message);
-						setLoading(false);
-						return;
-					}
-
-					// Update the form with the saved data
-					setFormData(data);
-					setLoading(false);
-				} catch (error) {
-					console.error("Error fetching document:", error);
-					setLoading(false);
-				}
-			};
-			fetchDocument();
-		}
-	}, [id]); // Re-run if the ID in the URL changes
 
 	// Handler for representative input changes
 	const handleRepChange = (index, e) => {
@@ -124,6 +70,72 @@ export default function StatementOfFacts() {
 		if (formData.representatives.length > 1) {
 			const newReps = formData.representatives.filter((_, i) => i !== index);
 			setFormData({ ...formData, representatives: newReps });
+		}
+	};
+
+	useEffect(() => {
+		const fetchStatus = async () => {
+			if (!id) return;
+			try {
+				const res = await fetch(`/api/statementOfFacts/get/${id}`);
+				const data = await res.json();
+
+				if (data.success === false) {
+					console.error(data.message);
+					return;
+				}
+
+				// CRITICAL: Format dates specifically for HTML5 inputs
+				const formattedData = {
+					...data,
+					date: data.date
+						? new Date(data.date).toISOString().split("T")[0]
+						: "",
+					dischargeLogs:
+						data.dischargeLogs?.map((log) => ({
+							...log,
+							date: log.date
+								? new Date(log.date).toISOString().split("T")[0]
+								: "",
+						})) || [],
+				};
+
+				setFormData(formattedData);
+			} catch (error) {
+				console.error("Fetch Error:", error);
+			}
+		};
+		fetchStatus();
+	}, [id]);
+
+	const handleSave = async () => {
+		if (!currentUser) return alert("You must be logged in to save!");
+		setLoading(true);
+		try {
+			const res = await fetch("/api/statementOfFacts/save", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					...formData,
+					userRef: currentUser._id,
+					...(id && { _id: id }), // If 'id' exists, it updates; otherwise, it creates
+				}),
+			});
+			const data = await res.json();
+
+			if (data.success !== false) {
+				alert("Record Saved!");
+				// If it was a new record (no current ID in URL), navigate to the edit path
+				if (!id && data._id) {
+					navigate(`/statementOfFacts/${data._id}`); //
+				}
+			} else {
+				alert(data.message || "Failed to save");
+			}
+		} catch (err) {
+			console.error("Save Error:", err);
+		} finally {
+			setLoading(false);
 		}
 	};
 

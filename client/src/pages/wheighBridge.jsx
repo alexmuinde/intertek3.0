@@ -51,13 +51,30 @@ export default function WheighBridge() {
 	});
 
 	useEffect(() => {
+		// Only fetch if there is an ID in the URL (Update Mode)
 		if (id) {
 			const fetchReport = async () => {
-				const res = await fetch(`/api/wheighBridge/get/${id}`);
-				const data = await res.json();
-				if (data.success !== false) {
-					// Update form state with the existing report data
-					setFormData({ ...data });
+				setLoading(true);
+				try {
+					const res = await fetch(`/api/wheighBridge/get/${id}`);
+					const data = await res.json();
+
+					if (data.success !== false) {
+						// Format dates to YYYY-MM-DD for HTML5 inputs
+						const formattedData = {
+							...data,
+							dateOfLoading: data.dateOfLoading
+								? data.dateOfLoading.split("T")[0]
+								: "",
+						};
+						setFormData(formattedData);
+					} else {
+						setError(data.message);
+					}
+				} catch (err) {
+					setError(true);
+				} finally {
+					setLoading(false);
 				}
 			};
 			fetchReport();
@@ -66,8 +83,11 @@ export default function WheighBridge() {
 
 	const handleSubmit = async (e) => {
 		e.preventDefault();
+		setLoading(true);
+		setError(false);
+
 		try {
-			// Include the _id in the body so the backend knows to update instead of create
+			// If 'id' exists in URL, include it in body to trigger an Update in the backend
 			const body = id ? { ...formData, _id: id } : formData;
 
 			const res = await fetch("/api/wheighBridge/save", {
@@ -75,10 +95,24 @@ export default function WheighBridge() {
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify(body),
 			});
+
 			const data = await res.json();
-			if (data.success !== false) navigate("/");
+
+			if (data.success !== false) {
+				alert("Record Saved!");
+
+				// If it was a NEW record, redirect to its unique update URL
+				if (!id && data._id) {
+					navigate(`/wheighBridge/${data._id}`);
+				}
+				// If already updating, the UI stays current
+			} else {
+				setError(data.message);
+			}
 		} catch (err) {
-			console.error(err);
+			setError("Failed to connect to server");
+		} finally {
+			setLoading(false);
 		}
 	};
 
@@ -89,34 +123,6 @@ export default function WheighBridge() {
 			[id]: type === "checkbox" ? checked : value,
 		});
 	};
-
-	/**const handleChange = (e) => {
-		if (e.target.type === "checkbox") {
-			setFormData({ ...formData, [e.target.id]: e.target.checked });
-		} else {
-			setFormData({ ...formData, [e.target.id]: e.target.value });
-		}
-	}; */
-
-	/**const handleSubmit = async (e) => {
-		e.preventDefault();
-		try {
-			setLoading(true);
-			setError(false);
-			const res = await fetch("/api/wheighBridge/save", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify(formData),
-			});
-			const data = await res.json();
-			setLoading(false);
-			if (data.success === false) return setError(data.message);
-			navigate("/");
-		} catch (err) {
-			setError(err.message);
-			setLoading(false);
-		}
-	}; */
 
 	// Function to add a new empty field to a specific seal list
 	const handleAddSeal = (field) => {

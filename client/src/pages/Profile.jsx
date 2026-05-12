@@ -57,7 +57,7 @@ export default function Profile() {
 	const handleFileUpload = (file) => {
 		const cloudName = "dnxmcdha2";
 		const uploadPreset = "intertek";
-		const url = `https://cloudinary.com{cloudName}/image/upload`;
+		const url = `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`;
 		const xhr = new XMLHttpRequest();
 		const fd = new FormData();
 		xhr.open("POST", url, true);
@@ -83,15 +83,19 @@ export default function Profile() {
 		try {
 			dispatch(updateUserStart());
 			const res = await fetch(`/api/user/update/${currentUser._id}`, {
-				method: "POST",
+				method: "POST", // Ensure this matches your backend router.post
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify(formData),
 			});
 			const data = await res.json();
-			if (data.success === false)
+
+			if (data.success === false) {
 				return dispatch(updateUserFailure(data.message));
+			}
+
 			dispatch(updateUserSuccess(data));
 			setUpdateSuccess(true);
+			setFormData({}); // Clear temporary state after saving to database
 		} catch (error) {
 			dispatch(updateUserFailure(error.message));
 		}

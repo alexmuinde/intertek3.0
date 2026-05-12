@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useSelector } from "react-redux";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 
 /**
  * VesselExperienceFactor Component
@@ -10,6 +10,7 @@ import { useParams } from "react-router-dom";
 export default function VesselExperienceFactor() {
 	const { currentUser } = useSelector((state) => state.user);
 	const { id } = useParams();
+	const navigate = useNavigate();
 
 	const [formData, setFormData] = useState({
 		vessel: "",
@@ -177,6 +178,41 @@ export default function VesselExperienceFactor() {
 	};
 
 	// --- API PERSISTENCE ---
+	useEffect(() => {
+		const fetchStatus = async () => {
+			if (!id) return;
+			try {
+				const res = await fetch(`/api/vesselExperienceFactor/get/${id}`);
+				const data = await res.json();
+
+				if (data.success === false) {
+					console.error(data.message);
+					return;
+				}
+
+				// CRITICAL: Format dates specifically for HTML5 inputs
+				const formattedData = {
+					...data,
+					date: data.date
+						? new Date(data.date).toISOString().split("T")[0]
+						: "",
+					dischargeLogs:
+						data.dischargeLogs?.map((log) => ({
+							...log,
+							date: log.date
+								? new Date(log.date).toISOString().split("T")[0]
+								: "",
+						})) || [],
+				};
+
+				setFormData(formattedData);
+			} catch (error) {
+				console.error("Fetch Error:", error);
+			}
+		};
+		fetchStatus();
+	}, [id]);
+
 	const handleSave = async () => {
 		if (!currentUser) return alert("You must be logged in to save!");
 		setLoading(true);
@@ -187,12 +223,20 @@ export default function VesselExperienceFactor() {
 				body: JSON.stringify({
 					...formData,
 					userRef: currentUser._id,
-					...(id && { _id: id }),
+					...(id && { _id: id }), // If 'id' exists, it updates; otherwise, it creates
 				}),
 			});
 			const data = await res.json();
-			if (data.success !== false)
-				alert("Vessel Experience Factor Report Saved!");
+
+			if (data.success !== false) {
+				alert("Report Saved!");
+				// If it was a new record (no current ID in URL), navigate to the edit path
+				if (!id && data._id) {
+					navigate(`/vesselExperienceFactor/${data._id}`); //
+				}
+			} else {
+				alert(data.message || "Failed to save");
+			}
 		} catch (err) {
 			console.error("Save Error:", err);
 		} finally {
@@ -501,38 +545,59 @@ export default function VesselExperienceFactor() {
 					{formData.representatives.map((rep, index) => (
 						<div
 							key={index}
-							className="p-3 bg-[#f8f6f6] mb-2 relative border border-gray-200 rounded"
+							className="relative pb-4 mb-4 border-b border-gray-100 last:border-0"
 						>
 							{index > 0 && (
 								<button
 									onClick={() => removeRep(index)}
-									className="absolute top-1 right-1 text-red-500 font-bold hover:scale-125 transition-transform"
+									className="absolute -top-1 -right-1 text-red-500 font-bold hover:scale-125 transition-transform z-10"
 								>
 									×
 								</button>
 							)}
-							<input
-								name="name"
-								placeholder="Full Name"
-								value={rep.name}
-								onChange={(e) => handleRepChange(index, e)}
-								className="w-full border-b border-gray-300 bg-transparent text-xs p-1 mb-2 outline-none font-semibold"
-							/>
-							<div className="grid grid-cols-2 gap-2">
-								<input
-									name="id"
-									placeholder="ID / Passport"
-									value={rep.id}
-									onChange={(e) => handleRepChange(index, e)}
-									className="border-b border-gray-300 bg-transparent text-xs p-1 outline-none"
-								/>
-								<input
-									name="email"
-									placeholder="Email Address"
-									value={rep.email}
-									onChange={(e) => handleRepChange(index, e)}
-									className="border-b border-gray-300 bg-transparent text-xs p-1 outline-none"
-								/>
+
+							<div className="space-y-4">
+								{/* Full Name */}
+								<div>
+									<label className="text-[10px] font-bold text-gray-400 uppercase">
+										Full Name
+									</label>
+									<input
+										type="text"
+										name="name"
+										value={rep.name || ""}
+										onChange={(e) => handleRepChange(index, e)}
+										className="w-full border-b border-gray-300 bg-transparent outline-none p-1 text-sm"
+									/>
+								</div>
+
+								{/* ID and Email Grid */}
+								<div className="grid grid-cols-2 gap-4">
+									<div>
+										<label className="text-[10px] font-bold text-gray-400 uppercase">
+											ID / Passport
+										</label>
+										<input
+											type="text"
+											name="id"
+											value={rep.id || ""}
+											onChange={(e) => handleRepChange(index, e)}
+											className="w-full border-b border-gray-300 bg-transparent outline-none p-1 text-sm"
+										/>
+									</div>
+									<div>
+										<label className="text-[10px] font-bold text-gray-400 uppercase">
+											Email Address
+										</label>
+										<input
+											type="email"
+											name="email"
+											value={rep.email || ""}
+											onChange={(e) => handleRepChange(index, e)}
+											className="w-full border-b border-gray-300 bg-transparent outline-none p-1 text-sm"
+										/>
+									</div>
+								</div>
 							</div>
 						</div>
 					))}

@@ -39,7 +39,8 @@ const vesselExperienceFactorSchema = new mongoose.Schema(
 		],
 		// Authentication Reference
 		userRef: {
-			type: String,
+			type: mongoose.Schema.Types.ObjectId, // MUST be ObjectId, not String
+			ref: "User", // MUST match your User model name
 			required: true,
 		},
 	},

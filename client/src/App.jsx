@@ -10,6 +10,8 @@ import WheighBridge from "./pages/wheighBridge";
 import StatementOfFacts from "./pages/statementOfFacts";
 import SealingReport from "./pages/sealingReport";
 import VesselExperienceFactor from "./pages/vesselExperienceFactor";
+import VesselDischargeStatus from "./pages/vesselDischargeStatus";
+import ShoreTankQuantityReport from "./pages/shoreTankQuantityReport";
 
 export default function App() {
 	return (
@@ -28,6 +30,14 @@ export default function App() {
 					<Route
 						path="/vesselExperienceFactor/:id?"
 						element={<VesselExperienceFactor />}
+					/>
+					<Route
+						path="/vesselDischargeStatus/:id?"
+						element={<VesselDischargeStatus />}
+					/>
+					<Route
+						path="/shoreTankQuantityReport/:id?"
+						element={<ShoreTankQuantityReport />}
 					/>
 				</Route>
 			</Routes>

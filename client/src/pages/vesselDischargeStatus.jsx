@@ -1,45 +1,71 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 
-export default function SealingReport() {
+export default function VesselDischargeStatus() {
 	const { currentUser } = useSelector((state) => state.user);
 	const { id } = useParams();
+	const [loading, setLoading] = useState(false);
 	const navigate = useNavigate();
+
 	const [formData, setFormData] = useState({
 		vessel: "",
-		port: "",
 		date: "",
-		cargo: "",
-		seals: [{ location: "", sealNumber: "" }], // Dynamic Sealing Rows
+		berthNumber: "",
+		shipTanks: "",
+		gradeBl: "",
+		remarks: "",
 		inspectorName: "",
+		dischargeLogs: [
+			{
+				date: "",
+				time: "",
+				manifoldNo: "",
+				pressure: "",
+				temp: "",
+				rob: "",
+				qty: "",
+				rate: "",
+			},
+		],
 		representatives: [{ name: "", id: "", email: "" }],
 	});
-	const [loading, setLoading] = useState(false);
 
-	// General input changes
+	// Handle standard text inputs
 	const handleChange = (e) => {
 		setFormData({ ...formData, [e.target.id]: e.target.value });
 	};
 
-	// --- SEAL ROW LOGIC ---
-	const handleSealChange = (index, e) => {
-		const newSeals = [...formData.seals];
-		newSeals[index][e.target.name] = e.target.value;
-		setFormData({ ...formData, seals: newSeals });
+	// --- DISCHARGE LOG LOGIC ---
+	const handleLogChange = (index, e) => {
+		const newLogs = [...formData.dischargeLogs];
+		newLogs[index][e.target.name] = e.target.value;
+		setFormData({ ...formData, dischargeLogs: newLogs });
 	};
 
-	const addSeal = () => {
+	const addLog = () => {
 		setFormData({
 			...formData,
-			seals: [...formData.seals, { location: "", sealNumber: "" }],
+			dischargeLogs: [
+				...formData.dischargeLogs,
+				{
+					date: "",
+					time: "",
+					manifoldNo: "",
+					pressure: "",
+					temp: "",
+					rob: "",
+					qty: "",
+					rate: "",
+				},
+			],
 		});
 	};
 
-	const removeSeal = (index) => {
-		if (formData.seals.length > 1) {
-			const newSeals = formData.seals.filter((_, i) => i !== index);
-			setFormData({ ...formData, seals: newSeals });
+	const removeLog = (index) => {
+		if (formData.dischargeLogs.length > 1) {
+			const newLogs = formData.dischargeLogs.filter((_, i) => i !== index);
+			setFormData({ ...formData, dischargeLogs: newLogs });
 		}
 	};
 
@@ -71,7 +97,7 @@ export default function SealingReport() {
 		const fetchStatus = async () => {
 			if (!id) return;
 			try {
-				const res = await fetch(`/api/sealingReport/get/${id}`);
+				const res = await fetch(`/api/vesselDischargeStatus/get/${id}`);
 				const data = await res.json();
 
 				if (data.success === false) {
@@ -106,7 +132,7 @@ export default function SealingReport() {
 		if (!currentUser) return alert("You must be logged in to save!");
 		setLoading(true);
 		try {
-			const res = await fetch("/api/sealingReport/save", {
+			const res = await fetch("/api/vesselDischargeStatus/save", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({
@@ -121,7 +147,7 @@ export default function SealingReport() {
 				alert("Report Saved!");
 				// If it was a new record (no current ID in URL), navigate to the edit path
 				if (!id && data._id) {
-					navigate(`/sealingReport/${data._id}`); //
+					navigate(`/vesselDischargeStatus/${data._id}`); //
 				}
 			} else {
 				alert(data.message || "Failed to save");
@@ -136,35 +162,23 @@ export default function SealingReport() {
 	return (
 		<main className="p-4 max-w-7xl mx-auto font-serif">
 			<h1 className="text-2xl font-bold text-center mb-6 uppercase tracking-widest border-b-2 border-black pb-2">
-				Sealing Report
+				Vessel Discharge Status
 			</h1>
 
 			<div className="flex flex-col lg:flex-row gap-8">
-				{/* LEFT SECTION: Vessel & Seal Details */}
+				{/* LEFT SECTION: Vessel Info & Logs */}
 				<div className="flex-1 border-b-2 lg:border-b-0 lg:border-r-2 border-gray-200 pr-0 lg:pr-8">
 					<div className="grid grid-cols-2 gap-4 mb-6">
-						<div>
+						<div className="col-span-2">
 							<label className="text-xs font-bold uppercase text-gray-500">
 								Vessel
 							</label>
 							<input
 								type="text"
 								id="vessel"
-								onChange={handleChange}
 								value={formData.vessel}
-								className="w-full border-b border-black outline-none p-1 focus:bg-gray-50"
-							/>
-						</div>
-						<div>
-							<label className="text-xs font-bold uppercase text-gray-500">
-								Port
-							</label>
-							<input
-								type="text"
-								id="port"
 								onChange={handleChange}
-								value={formData.port}
-								className="w-full border-b border-black outline-none p-1"
+								className="w-full border-b border-black outline-none p-1 focus:bg-gray-50"
 							/>
 						</div>
 						<div>
@@ -174,83 +188,176 @@ export default function SealingReport() {
 							<input
 								type="date"
 								id="date"
-								value={formData.date ? formData.date.split("T")[0] : ""}
+								value={formData.date}
 								onChange={handleChange}
 								className="w-full border-b border-black outline-none p-1"
 							/>
 						</div>
 						<div>
 							<label className="text-xs font-bold uppercase text-gray-500">
-								Cargo
+								Berth Number
 							</label>
 							<input
 								type="text"
-								id="cargo"
-								value={formData.cargo}
+								id="berthNumber"
+								value={formData.berthNumber}
+								onChange={handleChange}
+								className="w-full border-b border-black outline-none p-1"
+							/>
+						</div>
+						<div>
+							<label className="text-xs font-bold uppercase text-gray-500">
+								Ship Tank(s)
+							</label>
+							<input
+								type="text"
+								id="shipTanks"
+								value={formData.shipTanks}
+								onChange={handleChange}
+								className="w-full border-b border-black outline-none p-1"
+							/>
+						</div>
+						<div>
+							<label className="text-xs font-bold uppercase text-gray-500">
+								Grade/BL
+							</label>
+							<input
+								type="text"
+								id="gradeBl"
+								value={formData.gradeBl}
 								onChange={handleChange}
 								className="w-full border-b border-black outline-none p-1"
 							/>
 						</div>
 					</div>
 
-					<h2 className="text-sm font-bold bg-black text-white p-1 mb-4">
-						SEALING DETAILS
+					<h2 className="text-sm font-bold bg-black text-white p-1 mb-4 uppercase">
+						Discharge Metrics
 					</h2>
-					<p className="text-xs italic mb-4">
-						We, the undersigned, confirm to have sealed as follows:
-					</p>
 
-					{formData.seals.map((seal, index) => (
+					{formData.dischargeLogs.map((log, index) => (
 						<div
 							key={index}
-							className="grid grid-cols-12 gap-2 mb-4 border-b border-gray-100 pb-2 items-center"
+							className="relative p-3 border-b border-gray-100 mb-2"
 						>
-							<div className="col-span-5">
-								<label className="text-[10px] uppercase text-gray-400">
-									Location/Point
-								</label>
-								<input
-									type="text"
-									name="location"
-									value={seal.location}
-									onChange={(e) => handleSealChange(index, e)}
-									placeholder="e.g. Tank 1 Valve"
-									className="w-full text-sm border-none outline-none focus:bg-gray-50"
-								/>
-							</div>
-							<div className="col-span-6">
-								<label className="text-[10px] uppercase text-gray-400">
-									Seal Number
-								</label>
-								<input
-									type="text"
-									name="sealNumber"
-									value={seal.sealNumber}
-									onChange={(e) => handleSealChange(index, e)}
-									placeholder="INT 000000"
-									className="w-full text-sm border-none outline-none focus:bg-gray-50"
-								/>
-							</div>
-							<div className="col-span-1 text-right pt-4">
+							{index > 0 && (
 								<button
-									onClick={() => removeSeal(index)}
-									className="text-red-500 hover:text-red-700 font-bold text-lg px-2"
+									onClick={() => removeLog(index)}
+									className="absolute top-0 right-0 text-red-500 font-bold px-2"
 								>
 									&times;
 								</button>
+							)}
+							<div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+								<div>
+									<label className="text-[10px] uppercase text-gray-400 font-bold">
+										Date
+									</label>
+									<input
+										type="date"
+										name="date"
+										value={log.date}
+										onChange={(e) => handleLogChange(index, e)}
+										className="w-full text-xs border-b border-gray-200 outline-none"
+									/>
+								</div>
+								<div>
+									<label className="text-[10px] uppercase text-gray-400 font-bold">
+										Time
+									</label>
+									<input
+										type="time"
+										name="time"
+										value={log.time}
+										onChange={(e) => handleLogChange(index, e)}
+										className="w-full text-xs border-b border-gray-200 outline-none"
+									/>
+								</div>
+								<div>
+									<label className="text-[10px] uppercase text-gray-400 font-bold">
+										Manifold #
+									</label>
+									<input
+										type="text"
+										name="manifoldNo"
+										value={log.manifoldNo}
+										onChange={(e) => handleLogChange(index, e)}
+										className="w-full text-xs border-b border-gray-200 outline-none"
+									/>
+								</div>
+								<div>
+									<label className="text-[10px] uppercase text-gray-400 font-bold">
+										Pressure
+									</label>
+									<input
+										type="text"
+										name="pressure"
+										value={log.pressure}
+										onChange={(e) => handleLogChange(index, e)}
+										className="w-full text-xs border-b border-gray-200 outline-none"
+									/>
+								</div>
+								<div>
+									<label className="text-[10px] uppercase text-gray-400 font-bold">
+										Cargo Temp
+									</label>
+									<input
+										type="text"
+										name="temp"
+										value={log.temp}
+										onChange={(e) => handleLogChange(index, e)}
+										className="w-full text-xs border-b border-gray-200 outline-none"
+									/>
+								</div>
+								<div>
+									<label className="text-[10px] uppercase text-gray-400 font-bold">
+										ROB Qty
+									</label>
+									<input
+										type="text"
+										name="rob"
+										value={log.rob}
+										onChange={(e) => handleLogChange(index, e)}
+										className="w-full text-xs border-b border-gray-200 outline-none"
+									/>
+								</div>
+								<div>
+									<label className="text-[10px] uppercase text-gray-400 font-bold">
+										Disch Qty
+									</label>
+									<input
+										type="text"
+										name="qty"
+										value={log.qty}
+										onChange={(e) => handleLogChange(index, e)}
+										className="w-full text-xs border-b border-gray-200 outline-none"
+									/>
+								</div>
+								<div>
+									<label className="text-[10px] uppercase text-gray-400 font-bold">
+										Rate
+									</label>
+									<input
+										type="text"
+										name="rate"
+										value={log.rate}
+										onChange={(e) => handleLogChange(index, e)}
+										className="w-full text-xs border-b border-gray-200 outline-none"
+									/>
+								</div>
 							</div>
 						</div>
 					))}
 
 					<button
-						onClick={addSeal}
-						className="text-xs bg-gray-200 px-3 py-1 rounded hover:bg-gray-300 transition-all font-bold"
+						onClick={addLog}
+						className="mt-4 text-xs bg-gray-200 px-3 py-1 rounded hover:bg-gray-300 transition-all font-bold uppercase"
 					>
-						+ ADD SEAL
+						+ ADD LOG ENTRY
 					</button>
 				</div>
 
-				{/* RIGHT SECTION: Signatures / Representatives */}
+				{/* RIGHT SECTION: Remarks & Signatures */}
 				<div className="flex-1 lg:pl-8 flex flex-col justify-between">
 					<div className="space-y-6">
 						<h2 className="text-sm font-bold border-b border-black uppercase">
@@ -259,25 +366,33 @@ export default function SealingReport() {
 
 						<div>
 							<label className="text-xs font-bold text-gray-400 uppercase">
+								Remarks
+							</label>
+							<textarea
+								id="remarks"
+								value={formData.remarks}
+								onChange={handleChange}
+								className="w-full border-b border-gray-300 outline-none p-2 text-sm min-h-[100px] focus:bg-gray-50"
+							/>
+						</div>
+
+						<div>
+							<label className="text-xs font-bold text-gray-400 uppercase">
 								Intertek Inspector
 							</label>
 							<input
 								type="text"
 								id="inspectorName"
+								value={formData.inspectorName}
 								onChange={handleChange}
-								value={formData.inspectorName || ""}
-								placeholder="Full Name"
-								className="w-full border-b border-gray-300 outline-none p-2 focus:bg-gray-50 transition-all"
+								className="w-full border-b border-gray-300 outline-none p-2 focus:bg-gray-50"
 							/>
 						</div>
 
 						<div className="space-y-6">
-							<div className="flex justify-between items-center border-b border-black">
-								<h2 className="text-sm font-bold uppercase">
-									Authorization & Representatives
-								</h2>
+							<div className="flex justify-between items-center border-b border-black pt-4">
+								<h2 className="text-sm font-bold uppercase">Representatives</h2>
 								<button
-									type="button"
 									onClick={addRep}
 									className="text-[10px] bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700 font-bold"
 								>
@@ -285,7 +400,6 @@ export default function SealingReport() {
 								</button>
 							</div>
 
-							{/* Dynamic Rep Rows - Updated to match SOF exactly */}
 							{formData.representatives.map((rep, index) => (
 								<div
 									key={index}
@@ -293,14 +407,12 @@ export default function SealingReport() {
 								>
 									{index > 0 && (
 										<button
-											type="button"
 											onClick={() => removeRep(index)}
-											className="absolute top-1 right-2 text-red-500 font-bold text-lg hover:text-red-700"
+											className="absolute top-1 right-2 text-red-500 font-bold text-lg"
 										>
 											&times;
 										</button>
 									)}
-
 									<div className="space-y-4">
 										<div>
 											<label className="text-[10px] font-bold text-gray-400 uppercase">
@@ -346,13 +458,12 @@ export default function SealingReport() {
 						</div>
 					</div>
 
-					{/* Save Button Stays at the bottom */}
 					<button
 						onClick={handleSave}
 						disabled={loading}
 						className="w-full mt-8 bg-black text-white py-3 rounded font-bold hover:bg-gray-800 transition-all uppercase tracking-widest"
 					>
-						{loading ? "Saving..." : "Save Sealing Report"}
+						{loading ? "Saving..." : "Save Discharge Status"}
 					</button>
 				</div>
 			</div>

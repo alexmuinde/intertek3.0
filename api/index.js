@@ -8,6 +8,8 @@ const wheighBridgeRouter = require("./routes/wheighBridgeRoute.js");
 const statementOfFactsRouter = require("./routes/statementOfFactsRoute.js");
 const sealingReportRouter = require("./routes/sealingReportRoute.js");
 const vesselExperienceFactorRouter = require("./routes/vesselExperienceFactorRoute.js");
+const vesselDischargeStatusRouter = require("./routes/vesselDischargeStatusRoute.js");
+const shoreTankQuantityReportRouter = require("./routes/shoreTankQuantityReportRoute.js");
 
 dotenv.config();
 
@@ -34,6 +36,8 @@ app.use("/api/wheighBridge", wheighBridgeRouter);
 app.use("/api/statementOfFacts", statementOfFactsRouter);
 app.use("/api/sealingReport", sealingReportRouter);
 app.use("/api/vesselExperienceFactor", vesselExperienceFactorRouter);
+app.use("/api/vesselDischargeStatus", vesselDischargeStatusRouter);
+app.use("/api/shoreTankQuantityReport", shoreTankQuantityReportRouter);
 
 // --- ERROR HANDLING ---
 app.use((err, req, res, next) => {
