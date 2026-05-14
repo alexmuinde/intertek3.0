@@ -131,7 +131,6 @@ export default function WheighBridge() {
 			[field]: [...formData[field], ""],
 		});
 	};
-
 	// Specialized handler for array fields (seals)
 	const handleSealChange = (index, value, field) => {
 		const updatedSeals = [...formData[field]];

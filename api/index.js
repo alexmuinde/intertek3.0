@@ -10,6 +10,21 @@ const sealingReportRouter = require("./routes/sealingReportRoute.js");
 const vesselExperienceFactorRouter = require("./routes/vesselExperienceFactorRoute.js");
 const vesselDischargeStatusRouter = require("./routes/vesselDischargeStatusRoute.js");
 const shoreTankQuantityReportRouter = require("./routes/shoreTankQuantityReportRoute.js");
+const shoreTankMeasurementDataRouter = require("./routes/shoreTankMeasurementDataRoute.js");
+const shoreTankCleanlinessReportRouter = require("./routes/shoreTankCleanlinessReportRoute.js");
+const shipsTanksUllageReportRouter = require("./routes/shipsTanksUllageReportRoute.js");
+const rtwsSafetyChecklistRouter = require("./routes/rtwsSafetyChecklistRoute.js");
+const receiptOfSealedSamplesRouter = require("./routes/receiptOfSealedSamplesRoute.js");
+const pumpingPressureLogRouter = require("./routes/pumpingPressureLogRoute.js");
+const pipelineInspectionReportRouter = require("./routes/pipelineInspectionReportRoute.js");
+const noticeOfApparentDiscrepancyRouter = require("./routes/noticeOfApparentDiscrepancyRoute.js");
+const letterOfProtestSlowRateRouter = require("./routes/letterOfProtestSlowRateRoute.js");
+const letterOfProtestShoreFinalOutturnFiguresRouter = require("./routes/letterOfProtestShoreFinalOutturnFiguresRoute.js");
+const letterOfProtestGeneralRouter = require("./routes/letterOfProtestGeneralRoute.js");
+const letterOfAssuranceRouter = require("./routes/letterOfAssuranceRoute.js");
+const handOverReportRouter = require("./routes/handOverReportRoute.js");
+const endOfPipelineSampleReportRouter = require("./routes/endOfPipelineSampleReportRoute.js");
+const dischargeProcedureSequenceRouter = require("./routes/dischargeProcedureSequenceRoute.js");
 
 dotenv.config();
 
@@ -38,6 +53,24 @@ app.use("/api/sealingReport", sealingReportRouter);
 app.use("/api/vesselExperienceFactor", vesselExperienceFactorRouter);
 app.use("/api/vesselDischargeStatus", vesselDischargeStatusRouter);
 app.use("/api/shoreTankQuantityReport", shoreTankQuantityReportRouter);
+app.use("/api/shoreTankMeasurementData", shoreTankMeasurementDataRouter);
+app.use("/api/shoreTankCleanlinessReport", shoreTankCleanlinessReportRouter);
+app.use("/api/shipsTanksUllageReport", shipsTanksUllageReportRouter);
+app.use("/api/rtwsSafetyChecklist", rtwsSafetyChecklistRouter);
+app.use("/api/receiptOfSealedSamples", receiptOfSealedSamplesRouter);
+app.use("/api/pumpingPressureLog", pumpingPressureLogRouter);
+app.use("/api/pipelineInspectionReport", pipelineInspectionReportRouter);
+app.use("/api/noticeOfApparentDiscrepancy", noticeOfApparentDiscrepancyRouter);
+app.use("/api/letterOfProtestSlowRate", letterOfProtestSlowRateRouter);
+app.use(
+	"/api/letterOfProtestShoreFinalOutturnFigures",
+	letterOfProtestShoreFinalOutturnFiguresRouter,
+);
+app.use("/api/letterOfProtestGeneral", letterOfProtestGeneralRouter);
+app.use("/api/letterOfAssurance", letterOfAssuranceRouter);
+app.use("/api/handOverReport", handOverReportRouter);
+app.use("/api/endOfPipelineSampleReport", endOfPipelineSampleReportRouter);
+app.use("/api/dischargeProcedureSequence", dischargeProcedureSequenceRouter);
 
 // --- ERROR HANDLING ---
 app.use((err, req, res, next) => {
