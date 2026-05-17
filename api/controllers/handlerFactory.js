@@ -1,28 +1,30 @@
-exports.saveDocument = (Model) => async (req, res, next) => {
+// A generic factory handler that abstracts data persistence logic for all inspection forms
+exports.saveDocument = (Model) => async (request, response, next) => {
 	try {
-		const { _id, ...data } = req.body;
-		const userId = req.user.id; // From verifyToken middleware
+		// Destructure out the internal MongoDB identification if it exists in the payload
+		const { _id, ...data } = request.body;
+		const userId = request.user.id; // Injected by your verifyToken middleware layer
 
 		if (_id) {
-			// SECURITY: Only update if the document exists AND belongs to this user
+			// SECURITY: Locate and update the document ONLY if it belongs to the logged-in surveyor
 			const document = await Model.findOneAndUpdate(
-				{ _id, userRef: userId },
+				{ _id, userReference: userId },
 				{ $set: data },
 				{ returnDocument: "after", runValidators: true },
 			);
 
 			if (!document) {
-				return res.status(403).json({
+				return response.status(403).json({
 					success: false,
 					message: "Unauthorized: You can only edit your own documents.",
 				});
 			}
-			return res.status(200).json(document);
+			return response.status(200).json(document);
 		}
 
-		// CREATE Logic: New documents always get the current user's ID
-		const newDocument = await Model.create({ ...data, userRef: userId });
-		res.status(201).json(newDocument);
+		// CREATE Logic: Initialize new inspection files linked directly to the surveyor
+		const newDocument = await Model.create({ ...data, userReference: userId });
+		response.status(201).json(newDocument);
 	} catch (error) {
 		next(error);
 	}

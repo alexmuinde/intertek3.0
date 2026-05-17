@@ -1,56 +1,56 @@
 const HandOverReport = require("../models/handOverReportModel.js");
-const factory = require("./handlerFactory.js");
+const handlerFactory = require("./handlerFactory.js");
 
-// 1. Save or Update via master global factory logic
-exports.saveHandOverReport = factory.saveDocument(HandOverReport);
+// Save or Update a handover document entry using the factory handler blueprint
+exports.saveHandOverReport = handlerFactory.saveDocument(HandOverReport);
 
-// 2. Query logs array mapped under active logged-in inspector profile
-exports.getAllHandOverReports = async (req, res, next) => {
+// Retrieve all reports created by the currently logged-in user session
+exports.getAllHandOverReports = async (request, response, next) => {
 	try {
-		const documents = await HandOverReport.find({
-			userRef: req.user.id,
-		}).sort({ updatedAt: -1 });
-
-		res.status(200).json(documents);
+		const userId = request.user.id;
+		const documents = await HandOverReport.find({ userReference: userId }).sort(
+			{
+				updatedAt: -1,
+			},
+		);
+		response.status(200).json(documents);
 	} catch (error) {
 		next(error);
 	}
 };
 
-// 3. Extract single document validating security compliance requirements
-exports.getHandOverReport = async (req, res, next) => {
+// Retrieve a single specific report by ID with secure account reference validation
+exports.getHandOverReport = async (request, response, next) => {
 	try {
-		const document = await HandOverReport.findById(req.params.id);
+		const documentId = request.params.id;
+		const report = await HandOverReport.findById(documentId);
 
-		if (!document) {
-			return res.status(404).json({
-				success: false,
-				message: "Hand Over report instance not found.",
-			});
+		if (!report) {
+			return response
+				.status(404)
+				.json({ success: false, message: "Report not found" });
 		}
 
-		// Security constraint tracking validation matching sealing report patterns exactly
-		if (document.userRef.toString() !== req.user.id) {
-			return res.status(403).json({
-				success: false,
-				message: "Unauthorized resource access vector restriction.",
-			});
+		if (report.userReference.toString() !== request.user.id) {
+			return response
+				.status(403)
+				.json({ success: false, message: "Unauthorized access restriction" });
 		}
 
-		res.status(200).json(document);
+		response.status(200).json(report);
 	} catch (error) {
 		next(error);
 	}
 };
 
-// 4. Admin dashboard stream aggregation query pipeline feeder
-exports.getEveryonesHandOverReports = async (req, res, next) => {
+// Public/Admin endpoint to fetch every transition log entry inside the system database
+exports.getEveryonesHandOverReports = async (request, response, next) => {
 	try {
 		const documents = await HandOverReport.find()
-			.populate("userRef", "username avatar")
+			.populate("userReference", "username avatar")
 			.sort({ updatedAt: -1 });
 
-		res.status(200).json(documents);
+		response.status(200).json(documents);
 	} catch (error) {
 		next(error);
 	}

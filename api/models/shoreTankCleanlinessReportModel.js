@@ -1,50 +1,52 @@
 const mongoose = require("mongoose");
 
+// Grouped sub-schema for terminal/client witness verification details
+const representativeSchema = new mongoose.Schema({
+	representativeName: { type: String, required: true },
+	representativeIdentification: { type: String, required: true },
+	representativeEmail: { type: String, required: true },
+});
+
+// Comprehensive schema for Shore Tank Cleanliness Inspection Reports
 const shoreTankCleanlinessReportSchema = new mongoose.Schema(
 	{
-		vessel: { type: String, required: true },
-		cargo: { type: String, required: true },
-		client: { type: String, required: true },
-		date: { type: Date, required: true },
-
-		// Narrative details from the statement string
-		attendanceLocation: { type: String },
-		attendanceTime: { type: String },
-		attendanceDate: { type: Date },
-		inspectedTankNumber: { type: String },
-		productToReceive: { type: String },
-
-		// Surface visual checklists
-		conditionClean: { type: Boolean, default: false },
-		conditionDry: { type: Boolean, default: false },
-		conditionOdorFree: { type: Boolean, default: false },
-
-		// Technical cleaning documentation parameters
-		tankConstructionMaterial: {
-			type: String,
-			enum: ["Steam", "Mild", "Coated"],
-			required: true,
-		},
-		reportedPreviousContent: { type: String, required: true },
-		methodsOfCleaning: { type: String, required: true },
-		remarks: { type: String, required: true },
-		intertekInspector: { type: String, required: true },
-
-		// Nested authorized signers validation array
-		representatives: [
-			{
-				name: String,
-				id: String,
-				email: String,
-			},
-		],
-
-		// Identity reference linkage to matching inspector account profile
-		userRef: {
+		userReference: {
 			type: mongoose.Schema.Types.ObjectId,
 			ref: "User",
 			required: true,
 		},
+		// Core Identity Parameters
+		vesselName: { type: String, required: true },
+		cargoDescription: { type: String, required: true },
+		clientName: { type: String, required: true },
+		dateOfReport: { type: String, required: true },
+
+		// Attendance Narrative Paragraph Inputs
+		attendanceLocation: { type: String, required: true },
+		timeOfAttendance: { type: String, required: true },
+		dateOfAttendance: { type: String, required: true },
+		inspectedTankNumber: { type: String, required: true },
+		productToReceive: { type: String, required: true },
+
+		// Condition Checkboxes Map (Stored as strict Booleans)
+		isInternalSurfaceClean: { type: Boolean, required: true },
+		isInternalSurfaceDry: { type: Boolean, required: true },
+		isInternalSurfaceOdorFree: { type: Boolean, required: true },
+
+		// Material Selection & Technical Properties
+		tankConstructionMaterial: {
+			type: String,
+			required: true,
+			enum: ["Steam", "Mild", "Coated"],
+		},
+		reportedPreviousContent: { type: String, required: true },
+		methodsOfCleaning: { type: String, required: true },
+
+		measurementRemarks: { type: String, required: true },
+		intertekInspector: { type: String, required: true },
+
+		// Grouped repeatable representatives list
+		representatives: { type: [representativeSchema], required: true },
 	},
 	{ timestamps: true },
 );
@@ -53,5 +55,4 @@ const ShoreTankCleanlinessReport = mongoose.model(
 	"ShoreTankCleanlinessReport",
 	shoreTankCleanlinessReportSchema,
 );
-
 module.exports = ShoreTankCleanlinessReport;

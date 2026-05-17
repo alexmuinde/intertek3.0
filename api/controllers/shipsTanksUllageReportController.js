@@ -1,56 +1,62 @@
 const ShipsTanksUllageReport = require("../models/shipsTanksUllageReportModel.js");
-const factory = require("./handlerFactory.js");
+const handlerFactory = require("../controllers/handlerFactory.js");
 
-// 1. Save or Update logic utilizing global factory pattern
-exports.saveShipsTanksUllageReport = factory.saveDocument(
+// Save or Update a report using the centralized factory framework blueprint
+exports.saveShipsTanksUllageReport = handlerFactory.saveDocument(
 	ShipsTanksUllageReport,
 );
 
-// 2. Fetch dataset scoped exclusively to the logged-in inspector
-exports.getAllShipsTanksUllageReports = async (req, res, next) => {
+// Retrieve all reports created by the currently logged-in user session
+exports.getAllShipsTanksUllageReports = async (request, response, next) => {
 	try {
+		const userId = request.user.id;
 		const documents = await ShipsTanksUllageReport.find({
-			userRef: req.user.id,
-		}).sort({ updatedAt: -1 });
-
-		res.status(200).json(documents);
+			userReference: userId,
+		}).sort({
+			updatedAt: -1,
+		});
+		response.status(200).json(documents);
 	} catch (error) {
 		next(error);
 	}
 };
 
-// 3. Extract singular record validating account level authority bounds
-exports.getShipsTanksUllageReport = async (req, res, next) => {
+// Retrieve a single specific report by ID with secure account reference validation
+exports.getShipsTanksUllageReport = async (request, response, next) => {
 	try {
-		const document = await ShipsTanksUllageReport.findById(req.params.id);
+		const documentId = request.params.id;
+		const report = await ShipsTanksUllageReport.findById(documentId);
 
-		if (!document) {
-			return res.status(404).json({
-				success: false,
-				message: "Ullage report record matrix not found",
-			});
+		if (!report) {
+			return response
+				.status(404)
+				.json({ success: false, message: "Report not found" });
 		}
 
-		if (document.userRef.toString() !== req.user.id) {
-			return res
+		if (report.userReference.toString() !== request.user.id) {
+			return response
 				.status(403)
-				.json({ success: false, message: "Resource permission scope denied" });
+				.json({ success: false, message: "Unauthorized access restriction" });
 		}
 
-		res.status(200).json(document);
+		response.status(200).json(report);
 	} catch (error) {
 		next(error);
 	}
 };
 
-// 4. Feeder module processing complete stream pipelines for admin spaces
-exports.getEveryonesShipsTanksUllageReports = async (req, res, next) => {
+// Public/Admin endpoint to fetch every ship ullage log entry inside the platform database
+exports.getEveryonesShipsTanksUllageReports = async (
+	request,
+	response,
+	next,
+) => {
 	try {
 		const documents = await ShipsTanksUllageReport.find()
-			.populate("userRef", "username avatar")
+			.populate("userReference", "username avatar")
 			.sort({ updatedAt: -1 });
 
-		res.status(200).json(documents);
+		response.status(200).json(documents);
 	} catch (error) {
 		next(error);
 	}

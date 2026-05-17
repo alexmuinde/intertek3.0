@@ -1,32 +1,34 @@
 const mongoose = require("mongoose");
 
+// Grouped sub-schema for representative sign-offs
+const representativeSchema = new mongoose.Schema({
+	representativeName: { type: String, required: true },
+	representativeIdentification: { type: String, required: true },
+	representativeEmail: { type: String, required: true },
+});
+
+// Comprehensive schema for Marine Sealing Reports
 const sealingReportSchema = new mongoose.Schema(
 	{
-		vessel: { type: String, required: true },
-		port: { type: String, required: true },
-		date: { type: Date, required: true },
-		cargo: { type: String, required: true },
-		// Changed 'entries' to 'seals' to match your report logic
-		seals: [
-			{
-				location: String,
-				sealNumber: String,
-			},
-		],
-		inspectorName: { type: String, required: true },
-		representatives: [
-			{
-				name: String,
-				id: String,
-				email: String,
-			},
-		],
-		// Links the report to the specific Intertek inspector
-		userRef: {
-			type: mongoose.Schema.Types.ObjectId, // MUST be ObjectId, not String
-			ref: "User", // MUST match your User model name
+		userReference: {
+			type: mongoose.Schema.Types.ObjectId,
+			ref: "User",
 			required: true,
 		},
+		// Core Identity Context Parameters
+		vesselName: { type: String, required: true },
+		portName: { type: String, required: true },
+		dateOfReport: { type: String, required: true },
+		cargoDescription: { type: String, required: true },
+
+		// Parallel Dynamic Primitive Lists (The "Add More..." location/seal arrays)
+		sealingLocations: { type: [String], required: true },
+		sealNumbers: { type: [String], required: true },
+
+		intertekInspector: { type: String, required: true },
+
+		// Grouped repeatable representatives list
+		representatives: { type: [representativeSchema], required: true },
 	},
 	{ timestamps: true },
 );

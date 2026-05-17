@@ -1,40 +1,36 @@
 const mongoose = require("mongoose");
 
+// Grouped sub-schema for witness verification details
+const representativeSchema = new mongoose.Schema({
+	representativeName: { type: String, required: true },
+	representativeIdentification: { type: String, required: true },
+	representativeEmail: { type: String, required: true },
+});
+
+// Comprehensive schema for Receipt of Sealed Samples reports
 const receiptOfSealedSamplesSchema = new mongoose.Schema(
 	{
-		vessel: { type: String, required: true },
-		client: { type: String, required: true },
-		portOfLoading: { type: String, required: true },
-		date: { type: Date, required: true },
-		cargo: { type: String, required: true },
-
-		// Sub-array component structure tracking listed dynamic records
-		samples: [
-			{
-				grade: String,
-				sizeOfSamples: String,
-				sealNumber: String,
-				description: String,
-			},
-		],
-
-		intertekInspector: { type: String, required: true },
-
-		// Consistently bound verification representatives map array at the bottom of data layer
-		representatives: [
-			{
-				name: String,
-				id: String,
-				email: String,
-			},
-		],
-
-		// Profile authority tracker reference token
-		userRef: {
+		userReference: {
 			type: mongoose.Schema.Types.ObjectId,
 			ref: "User",
 			required: true,
 		},
+		// Core Identity Context Parameters
+		intertekInspector: { type: String, required: true },
+		vesselName: { type: String, required: true },
+		clientName: { type: String, required: true },
+		portOfLoading: { type: String, required: true },
+		dateOfReport: { type: String, required: true },
+		cargoDescription: { type: String, required: true },
+
+		// Parallel Dynamic Primitive Lists (The "Add More..." log entries)
+		sampleGrades: { type: [String], required: true },
+		sizesOfSamples: { type: [String], required: true },
+		sealNumbers: { type: [String], required: true },
+		sampleDescriptions: { type: [String], required: true },
+
+		// Grouped repeatable representatives list moved structurally to the end
+		representatives: { type: [representativeSchema], required: true },
 	},
 	{ timestamps: true },
 );

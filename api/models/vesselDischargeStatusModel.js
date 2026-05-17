@@ -1,43 +1,47 @@
 const mongoose = require("mongoose");
 
+// Grouped sub-schema for witness verification details
+const representativeSchema = new mongoose.Schema({
+	representativeName: { type: String, required: true },
+	representativeIdentification: { type: String, required: true },
+	representativeEmail: { type: String, required: true },
+});
+
 const vesselDischargeStatusSchema = new mongoose.Schema(
 	{
-		vessel: { type: String, required: true },
-		date: { type: Date, required: true },
-		berthNumber: { type: String },
-		shipTanks: { type: String },
-		gradeBl: { type: String },
-		dischargeLogs: [
-			{
-				date: String,
-				time: String,
-				manifoldNo: String,
-				pressure: String,
-				temp: String,
-				rob: String,
-				qty: String,
-				rate: String,
-			},
-		],
-		remarks: { type: String },
-		inspectorName: { type: String, required: true },
-		representatives: [
-			{
-				name: String,
-				id: String,
-				email: String,
-			},
-		],
-		userRef: {
-			type: mongoose.Schema.Types.ObjectId, // MUST be ObjectId, not String
-			ref: "User", // MUST match your User model name
+		userReference: {
+			type: mongoose.Schema.Types.ObjectId,
+			ref: "User",
 			required: true,
 		},
+		// Core Identity Context Parameters
+		vesselName: { type: String, required: true },
+		dateOfReport: { type: String, required: true },
+		berthNumber: { type: String, required: true },
+		shipTanks: { type: String, required: true },
+		cargoGradeBillOfLading: { type: String, required: true },
+
+		// Parallel Dynamic Primitive Lists (The "Add More..." log entries)
+		datesOfLogEntries: { type: [String], required: true },
+		timesOfLogEntries: { type: [String], required: true },
+		manifoldNumbers: { type: [String], required: true },
+		manifoldPressures: { type: [String], required: true }, // Kept as String to accommodate pressure units (bar, psi, etc.)
+		cargoTemperatures: { type: [Number], required: true },
+		remainingOnBoardQuantities: { type: [Number], required: true },
+		dischargeQuantities: { type: [Number], required: true },
+		dischargeRates: { type: [Number], required: true },
+
+		remarks: { type: String, required: true },
+		intertekInspector: { type: String, required: true },
+
+		// Grouped repeatable representatives list
+		representatives: { type: [representativeSchema], required: true },
 	},
 	{ timestamps: true },
 );
 
-module.exports = mongoose.model(
+const VesselDischargeStatus = mongoose.model(
 	"VesselDischargeStatus",
 	vesselDischargeStatusSchema,
 );
+module.exports = VesselDischargeStatus;

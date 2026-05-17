@@ -1,64 +1,61 @@
 const mongoose = require("mongoose");
 
-const shoreTankMeasurementSchema = new mongoose.Schema(
+// Grouped sub-schema for witness validation details
+const representativeSchema = new mongoose.Schema({
+	representativeName: { type: String, required: true },
+	representativeIdentification: { type: String, required: true },
+	representativeEmail: { type: String, required: true },
+});
+
+// Comprehensive schema for Shore Tank Measurement Data Reports
+const shoreTankMeasurementDataSchema = new mongoose.Schema(
 	{
-		date: { type: Date, required: true },
-		installation: { type: String, required: true },
-		tankNumber: { type: String, required: true },
-		vessel: { type: String, required: true },
-		account: { type: String, required: true },
-		grade: { type: String, required: true },
-
-		// Nested array tracking multiple dynamic dip items
-		tankMeasurements: [
-			{
-				tankNumberDetail: String,
-				overallDip: String,
-				productDip: String,
-				temperature: String,
-				time: String,
-			},
-		],
-
-		// Sampling Checkboxes
-		beforeDischarge: { type: Boolean, default: false },
-		afterDischarge: { type: Boolean, default: false },
-		upper: { type: Boolean, default: false },
-		middle: { type: Boolean, default: false },
-		lower: { type: Boolean, default: false },
-		running: { type: Boolean, default: false },
-		profile: { type: Boolean, default: false },
-		numberOfSamples: { type: String },
-
-		// Sampling Reasons
-		reasonDensity: { type: Boolean, default: false },
-		reasonAnalysis: { type: Boolean, default: false },
-		reasonRetention: { type: Boolean, default: false },
-
-		remarks: { type: String },
-		intertekInspector: { type: String, required: true },
-
-		// Nested array tracking validation signatures
-		representatives: [
-			{
-				name: String,
-				id: String,
-				email: String,
-			},
-		],
-
-		// Inspector access relation reference
-		userRef: {
+		userReference: {
 			type: mongoose.Schema.Types.ObjectId,
 			ref: "User",
 			required: true,
 		},
+		// Core Identity Context Parameters
+		dateOfReport: { type: String, required: true },
+		installationName: { type: String, required: true },
+		tankNumberHeader: { type: String, required: true },
+		vesselName: { type: String, required: true },
+		accountName: { type: String, required: true },
+		cargoGrade: { type: String, required: true },
+
+		// REFACTORED: Parallel Dynamic Lists for the Measurement Cards ("Add More..." entries)
+		tankNumbers: { type: [String], required: true },
+		overallDips: { type: [Number], required: true },
+		productDips: { type: [Number], required: true },
+		temperatures: { type: [Number], required: true },
+		timesOfMeasurements: { type: [String], required: true },
+
+		// Sample Type Checkbox Booleans
+		isBeforeDischarge: { type: Boolean, required: true },
+		isAfterDischarge: { type: Boolean, required: true },
+		isUpperSample: { type: Boolean, required: true },
+		isMiddleSample: { type: Boolean, required: true },
+		isLowerSample: { type: Boolean, required: true },
+		isRunningSample: { type: Boolean, required: true },
+		isProfileSample: { type: Boolean, required: true },
+		numberOfSamples: { type: Number, required: true },
+
+		// Reason For Sampling Checkbox Booleans
+		isSamplingForDensity: { type: Boolean, required: true },
+		isSamplingForAnalysis: { type: Boolean, required: true },
+		isSamplingForRetention: { type: Boolean, required: true },
+
+		measurementRemarks: { type: String, required: true },
+		intertekInspector: { type: String, required: true },
+
+		// Grouped repeatable representatives list
+		representatives: { type: [representativeSchema], required: true },
 	},
 	{ timestamps: true },
 );
 
-const ShoreTankMeasurement = mongoose.model(
-	"ShoreTankMeasurement",
-	shoreTankMeasurementSchema,
+const ShoreTankMeasurementData = mongoose.model(
+	"ShoreTankMeasurementData",
+	shoreTankMeasurementDataSchema,
 );
-module.exports = ShoreTankMeasurement;
+module.exports = ShoreTankMeasurementData;

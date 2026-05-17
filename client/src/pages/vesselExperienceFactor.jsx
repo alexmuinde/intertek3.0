@@ -1,615 +1,709 @@
 import { useState, useEffect } from "react";
 import { useSelector } from "react-redux";
-import { useParams, useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 
-/**
- * VesselExperienceFactor Component
- * Features: Automatic Ratio calculation, limit validation (±0.0003),
- * auto-correction for non-qualifying voyages, and full CRUD capability.
- */
 export default function VesselExperienceFactor() {
 	const { currentUser } = useSelector((state) => state.user);
-	const { id } = useParams();
 	const navigate = useNavigate();
+	const { id } = useParams();
 
-	const [formData, setFormData] = useState({
-		vessel: "",
-		port: "",
-		date: "",
-		voyages: [
-			{
-				voyageNo: "",
-				date: "",
-				loadPort: "",
-				cargo: "",
-				shipFig: "",
-				shoreFig: "",
-				ratio: "0.00000",
-				qual: "y",
-			},
-		],
-		shipTotal: "0.000",
-		shoreTotal: "0.000",
-		avgRatio: "0.00000",
-		upperLimit: "0.00000",
-		lowerLimit: "0.00000",
-		shipQualTotal: "0.000",
-		shoreQualTotal: "0.000",
-		vesselExperienceFactor: "0.00000",
-		inspectorName: "",
-		representatives: [{ name: "", id: "", email: "" }],
-	});
-
+	const [error, setError] = useState(false);
 	const [loading, setLoading] = useState(false);
 
-	// --- DYNAMIC CALCULATIONS & AUTO-CORRECTION LOGIC ---
+	const [formData, setFormData] = useState({
+		userReference: currentUser._id,
+		vesselName: "",
+		dateOfReport: "",
+		portName: "",
+
+		voyageNumbers: [""],
+		datesOfVoyages: [""],
+		loadPorts: [""],
+		cargoDescriptions: [""],
+		shipsFigures: [""],
+		shoreFigures: [""],
+		ratiosShipShore: [""],
+		isQualifyingVoyages: [""],
+
+		shipsFigureTotals: "",
+		shoreFigureTotals: "",
+		averageRatio: "",
+		upperLimit: "",
+		lowerLimit: "",
+		shipsQualifyingTotals: "",
+		shoreQualifyingTotals: "",
+		vesselExperienceFactor: "",
+
+		intertekInspector: "",
+		// Grouped state blueprint for adding full single representative items
+		representatives: [
+			{
+				representativeName: "",
+				representativeIdentification: "",
+				representativeEmail: "",
+			},
+		],
+	});
+
+	// --- DYNAMIC RUNTIME MATHEMATICAL AGGREGATIONS ENGINE ---
 	useEffect(() => {
-		// 1. Calculate Ratios for all rows first
-		const updatedVoyages = formData.voyages.map((v) => {
-			const ship = parseFloat(v.shipFig) || 0;
-			const shore = parseFloat(v.shoreFig) || 0;
-			const ratio = shore !== 0 ? (ship / shore).toFixed(5) : "0.00000";
-			return { ...v, ratio };
-		});
-
-		// 2. Calculate the average and limits based on all current entries
-		const shipTotalAll = updatedVoyages.reduce(
-			(acc, v) => acc + (parseFloat(v.shipFig) || 0),
-			0,
-		);
-		const shoreTotalAll = updatedVoyages.reduce(
-			(acc, v) => acc + (parseFloat(v.shoreFig) || 0),
-			0,
-		);
-		const avgRatioValue =
-			shoreTotalAll !== 0 ? shipTotalAll / shoreTotalAll : 0;
-
-		const avgRatio = avgRatioValue.toFixed(5);
-		const upperLimit = (avgRatioValue + 0.0003).toFixed(5);
-		const lowerLimit = (avgRatioValue - 0.0003).toFixed(5);
-
-		// 3. AUTO-CORRECTION: Update "qual" based on limits
-		const autoCorrectedVoyages = updatedVoyages.map((v) => {
-			if (v.ratio && v.ratio !== "0.00000") {
-				const isOutOfRange =
-					parseFloat(v.ratio) > parseFloat(upperLimit) ||
-					parseFloat(v.ratio) < parseFloat(lowerLimit);
-				// Automatically set to 'n' if out of range, 'y' if within range
-				return { ...v, qual: isOutOfRange ? "n" : "y" };
+		const updatedRatios = formData.shipsFigures.map((shipVal, index) => {
+			const ship = parseFloat(shipVal);
+			const shore = parseFloat(formData.shoreFigures[index]);
+			if (ship && shore && shore !== 0) {
+				return parseFloat((ship / shore).toFixed(4));
 			}
-			return v;
+			return 0;
 		});
 
-		// 4. Calculate final VEF based only on the auto-corrected 'y' voyages
-		const qualVoyages = autoCorrectedVoyages.filter(
-			(v) => v.qual.toLowerCase() === "y",
-		);
-		const shipQualTotal = qualVoyages.reduce(
-			(acc, v) => acc + (parseFloat(v.shipFig) || 0),
+		const totalShip = formData.shipsFigures.reduce(
+			(acc, curr) => acc + (parseFloat(curr) || 0),
 			0,
 		);
-		const shoreQualTotal = qualVoyages.reduce(
-			(acc, v) => acc + (parseFloat(v.shoreFig) || 0),
+		const totalShore = formData.shoreFigures.reduce(
+			(acc, curr) => acc + (parseFloat(curr) || 0),
 			0,
 		);
-		const vef =
-			shoreQualTotal !== 0
-				? (shipQualTotal / shoreQualTotal).toFixed(5)
-				: "0.00000";
 
-		// Deep comparison to prevent infinite update loops
-		if (
-			JSON.stringify(autoCorrectedVoyages) !==
-				JSON.stringify(formData.voyages) ||
-			formData.vesselExperienceFactor !== vef
-		) {
-			setFormData((prev) => ({
-				...prev,
-				voyages: autoCorrectedVoyages,
-				shipTotal: shipTotalAll.toFixed(3),
-				shoreTotal: shoreTotalAll.toFixed(3),
-				avgRatio,
-				upperLimit,
-				lowerLimit,
-				shipQualTotal: shipQualTotal.toFixed(3),
-				shoreQualTotal: shoreQualTotal.toFixed(3),
-				vesselExperienceFactor: vef,
-			}));
+		let avgRatio = 0;
+		const validRatios = updatedRatios.filter((val) => val > 0);
+		if (validRatios.length > 0) {
+			avgRatio = parseFloat(
+				(
+					validRatios.reduce((acc, curr) => acc + curr, 0) / validRatios.length
+				).toFixed(4),
+			);
 		}
-	}, [formData.voyages]);
 
-	// --- INPUT HANDLERS ---
-	const handleChange = (e) =>
-		setFormData({ ...formData, [e.target.id]: e.target.value });
+		const upper = avgRatio > 0 ? parseFloat((avgRatio + 0.0003).toFixed(4)) : 0;
+		const lower = avgRatio > 0 ? parseFloat((avgRatio - 0.0003).toFixed(4)) : 0;
 
-	const handleVoyageChange = (index, e) => {
-		const newVoyages = [...formData.voyages];
-		newVoyages[index][e.target.name] = e.target.value;
-		setFormData({ ...formData, voyages: newVoyages });
-	};
+		let qualifyingShipTotal = 0;
+		let qualifyingShoreTotal = 0;
 
-	const addVoyage = () => {
-		setFormData({
-			...formData,
-			voyages: [
-				...formData.voyages,
-				{
-					voyageNo: "",
-					date: "",
-					loadPort: "",
-					cargo: "",
-					shipFig: "",
-					shoreFig: "",
-					ratio: "0.00000",
-					qual: "y",
-				},
-			],
+		formData.isQualifyingVoyages.forEach((flag, index) => {
+			if (flag && flag.toLowerCase() === "y") {
+				qualifyingShipTotal += parseFloat(formData.shipsFigures[index]) || 0;
+				qualifyingShoreTotal += parseFloat(formData.shoreFigures[index]) || 0;
+			}
 		});
-	};
 
-	const removeVoyage = (index) => {
-		if (formData.voyages.length > 1) {
-			const newVoyages = formData.voyages.filter((_, i) => i !== index);
-			setFormData({ ...formData, voyages: newVoyages });
-		}
-	};
+		const vefCalculated =
+			qualifyingShoreTotal !== 0
+				? parseFloat((qualifyingShipTotal / qualifyingShoreTotal).toFixed(4))
+				: 0;
 
-	const handleRepChange = (index, e) => {
-		const newReps = [...formData.representatives];
-		newReps[index][e.target.name] = e.target.value;
-		setFormData({ ...formData, representatives: newReps });
-	};
+		setFormData((prevState) => ({
+			...prevState,
+			ratiosShipShore: updatedRatios,
+			shipsFigureTotals: totalShip,
+			shoreFigureTotals: totalShore,
+			averageRatio: avgRatio,
+			upperLimit: upper,
+			lowerLimit: lower,
+			shipsQualifyingTotals: qualifyingShipTotal,
+			shoreQualifyingTotals: qualifyingShoreTotal,
+			vesselExperienceFactor: vefCalculated,
+		}));
+	}, [
+		formData.shipsFigures,
+		formData.shoreFigures,
+		formData.isQualifyingVoyages,
+	]);
 
-	const addRep = () => {
-		setFormData({
-			...formData,
-			representatives: [
-				...formData.representatives,
-				{ name: "", id: "", email: "" },
-			],
-		});
-	};
-
-	const removeRep = (index) => {
-		if (formData.representatives.length > 1) {
-			const newReps = formData.representatives.filter((_, i) => i !== index);
-			setFormData({ ...formData, representatives: newReps });
-		}
-	};
-
-	// --- API PERSISTENCE ---
 	useEffect(() => {
-		const fetchStatus = async () => {
-			if (!id) return;
-			try {
-				const res = await fetch(`/api/vesselExperienceFactor/get/${id}`);
-				const data = await res.json();
-
-				if (data.success === false) {
-					console.error(data.message);
-					return;
-				}
-
-				// CRITICAL: Format dates specifically for HTML5 inputs
-				const formattedData = {
-					...data,
-					date: data.date
-						? new Date(data.date).toISOString().split("T")[0]
-						: "",
-					dischargeLogs:
-						data.dischargeLogs?.map((log) => ({
-							...log,
-							date: log.date
-								? new Date(log.date).toISOString().split("T")[0]
+		if (id) {
+			const fetchReport = async () => {
+				setLoading(true);
+				try {
+					const res = await fetch(`/api/vesselExperienceFactor/get/${id}`);
+					const data = await res.json();
+					if (data.success !== false) {
+						setFormData({
+							...data,
+							dateOfReport: data.dateOfReport
+								? data.dateOfReport.split("T")[0]
 								: "",
-						})) || [],
-				};
-
-				setFormData(formattedData);
-			} catch (error) {
-				console.error("Fetch Error:", error);
-			}
-		};
-		fetchStatus();
+							datesOfVoyages: data.datesOfVoyages.map((d) =>
+								d ? d.split("T")[0] : "",
+							),
+						});
+					} else {
+						setError(data.message);
+					}
+				} catch (err) {
+					setError(true);
+				} finally {
+					setLoading(false);
+				}
+			};
+			fetchReport();
+		}
 	}, [id]);
 
-	const handleSave = async () => {
-		if (!currentUser) return alert("You must be logged in to save!");
+	const handleSubmit = async (e) => {
+		e.preventDefault();
 		setLoading(true);
+		setError(false);
 		try {
+			const body = id ? { ...formData, _id: id } : formData;
 			const res = await fetch("/api/vesselExperienceFactor/save", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					...formData,
-					userRef: currentUser._id,
-					...(id && { _id: id }), // If 'id' exists, it updates; otherwise, it creates
-				}),
+				body: JSON.stringify(body),
 			});
 			const data = await res.json();
-
 			if (data.success !== false) {
-				alert("Report Saved!");
-				// If it was a new record (no current ID in URL), navigate to the edit path
+				alert("Record Saved Successfully!");
 				if (!id && data._id) {
-					navigate(`/vesselExperienceFactor/${data._id}`); //
+					navigate(`/vesselExperienceFactor/${data._id}`);
 				}
 			} else {
-				alert(data.message || "Failed to save");
+				setError(data.message);
 			}
 		} catch (err) {
-			console.error("Save Error:", err);
+			setError("Failed to establish server communication channels");
 		} finally {
 			setLoading(false);
 		}
 	};
 
+	const handleChange = (e) => {
+		const { id, value } = e.target;
+		setFormData({ ...formData, [id]: value });
+	};
+
+	const handleAddVoyageRecord = () => {
+		setFormData({
+			...formData,
+			voyageNumbers: [...formData.voyageNumbers, ""],
+			datesOfVoyages: [...formData.datesOfVoyages, ""],
+			loadPorts: [...formData.loadPorts, ""],
+			cargoDescriptions: [...formData.cargoDescriptions, ""],
+			shipsFigures: [...formData.shipsFigures, ""],
+			shoreFigures: [...formData.shoreFigures, ""],
+			ratiosShipShore: [...formData.ratiosShipShore, 0],
+			isQualifyingVoyages: [...formData.isQualifyingVoyages, ""],
+		});
+	};
+
+	const handleVoyageItemChange = (index, value, field) => {
+		const updatedList = [...formData[field]];
+		updatedList[index] = value;
+		setFormData({ ...formData, [field]: updatedList });
+	};
+
+	const handleRemoveVoyageRecord = (index) => {
+		if (formData.voyageNumbers.length > 1) {
+			setFormData({
+				...formData,
+				voyageNumbers: formData.voyageNumbers.filter((_, i) => i !== index),
+				datesOfVoyages: formData.datesOfVoyages.filter((_, i) => i !== index),
+				loadPorts: formData.loadPorts.filter((_, i) => i !== index),
+				cargoDescriptions: formData.cargoDescriptions.filter(
+					(_, i) => i !== index,
+				),
+				shipsFigures: formData.shipsFigures.filter((_, i) => i !== index),
+				shoreFigures: formData.shoreFigures.filter((_, i) => i !== index),
+				ratiosShipShore: formData.ratiosShipShore.filter((_, i) => i !== index),
+				isQualifyingVoyages: formData.isQualifyingVoyages.filter(
+					(_, i) => i !== index,
+				),
+			});
+		}
+	};
+
+	// Refactored Grouped Object Array Row Modifier Appender
+	const handleAddRepresentativeRow = () => {
+		setFormData({
+			...formData,
+			representatives: [
+				...formData.representatives,
+				{
+					representativeName: "",
+					representativeIdentification: "",
+					representativeEmail: "",
+				},
+			],
+		});
+	};
+
+	// Refactored Grouped Object Row Content Value Matrix Changer
+	const handleRepresentativeRowChange = (index, field, value) => {
+		const updatedRepresentatives = [...formData.representatives];
+		updatedRepresentatives[index][field] = value;
+		setFormData({ ...formData, representatives: updatedRepresentatives });
+	};
+
+	const handleRemoveRepresentativeRow = (index) => {
+		if (formData.representatives.length > 1) {
+			setFormData({
+				...formData,
+				representatives: formData.representatives.filter((_, i) => i !== index),
+			});
+		}
+	};
+
+	const inputStyle =
+		"w-full bg-[#f8f6f6] p-2 border-b border-black outline-none transition-all hover:shadow-[inset_0_2px_5px_rgba(0,0,0,0.19)] focus:border focus:shadow-[2px_2px_rgba(0,0,0,0.19)] text-xs font-serif font-medium";
+	const readOnlyStyle =
+		"w-full bg-gray-100 p-2 border-b border-gray-400 outline-none text-xs font-serif font-bold text-blue-800 cursor-not-allowed";
+	const labelStyle =
+		"block text-[11px] pl-1 mb-1 text-gray-700 font-bold tracking-wide uppercase font-serif";
+
 	return (
-		<main className="p-4 max-w-7xl mx-auto font-serif">
-			<h1 className="text-xl font-bold text-center mb-6 uppercase border-b-2 border-black pb-2 tracking-widest">
-				Vessel Experience Factor
-			</h1>
+		<main className="p-4 max-w-7xl mx-auto font-serif bg-white text-gray-900">
+			<header className="mb-4 border-b-2 border-black pb-2">
+				<h1 className="text-base font-bold text-center uppercase tracking-widest">
+					VESSEL EXPERIENCE FACTOR
+				</h1>
+			</header>
 
-			{/* HEADER SECTION */}
-			<div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 p-4 border-b border-black bg-gray-50">
-				<div>
-					<label className="block text-xs font-bold pl-2 text-gray-500 uppercase">
-						Vessel
-					</label>
-					<input
-						type="text"
-						id="vessel"
-						onChange={handleChange}
-						className="w-full bg-white border-b border-black p-1 outline-none"
-					/>
-				</div>
-				<div>
-					<label className="block text-xs font-bold pl-2 text-gray-500 uppercase">
-						Date
-					</label>
-					<input
-						type="date"
-						id="date"
-						onChange={handleChange}
-						className="w-full bg-white border-b border-black p-1 outline-none"
-					/>
-				</div>
-				<div>
-					<label className="block text-xs font-bold pl-2 text-gray-500 uppercase">
-						Port
-					</label>
-					<input
-						type="text"
-						id="port"
-						onChange={handleChange}
-						className="w-full bg-white border-b border-black p-1 outline-none"
-					/>
-				</div>
-			</div>
-
-			{/* 1. VOYAGE ENTRY SECTION */}
-			<div className="mb-4">
-				<h2 className="text-sm font-bold bg-black text-white p-1 mb-2">
-					1. VOYAGE DATA INPUTS
-				</h2>
-				{formData.voyages.map((v, index) => (
-					<div
-						key={index}
-						className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2 mb-4 p-2 bg-[#f8f6f6] border-b border-black relative"
-					>
-						<div>
-							<label className="text-[10px] pl-1 uppercase">Voy No</label>
-							<input
-								name="voyageNo"
-								value={v.voyageNo}
-								onChange={(e) => handleVoyageChange(index, e)}
-								className="w-full border-b border-black p-1 bg-transparent outline-none"
-							/>
-						</div>
-						<div>
-							<label className="text-[10px] pl-1 uppercase">Date</label>
-							<input
-								name="date"
-								type="date"
-								value={v.date}
-								onChange={(e) => handleVoyageChange(index, e)}
-								className="w-full border-b border-black p-1 bg-transparent outline-none"
-							/>
-						</div>
-						<div>
-							<label className="text-[10px] pl-1 uppercase">Load Port</label>
-							<input
-								name="loadPort"
-								value={v.loadPort}
-								onChange={(e) => handleVoyageChange(index, e)}
-								className="w-full border-b border-black p-1 bg-transparent outline-none"
-							/>
-						</div>
-						<div>
-							<label className="text-[10px] pl-1 uppercase">Cargo</label>
-							<input
-								name="cargo"
-								value={v.cargo}
-								onChange={(e) => handleVoyageChange(index, e)}
-								className="w-full border-b border-black p-1 bg-transparent outline-none"
-							/>
-						</div>
-						<div>
-							<label className="text-[10px] pl-1 font-bold text-blue-800">
-								SHIP FIGURE
-							</label>
-							<input
-								name="shipFig"
-								type="number"
-								value={v.shipFig}
-								onChange={(e) => handleVoyageChange(index, e)}
-								className="w-full border-b border-black p-1 bg-transparent outline-none font-bold"
-							/>
-						</div>
-						<div>
-							<label className="text-[10px] pl-1 font-bold text-green-800">
-								SHORE FIGURE
-							</label>
-							<input
-								name="shoreFig"
-								type="number"
-								value={v.shoreFig}
-								onChange={(e) => handleVoyageChange(index, e)}
-								className="w-full border-b border-black p-1 bg-transparent outline-none font-bold"
-							/>
-						</div>
-
-						{/* RATIO FIELD WITH DYNAMIC HIGHLIGHTING */}
-						<div>
-							<label className="text-[10px] pl-1">RATIO</label>
-							<input
-								name="ratio"
-								value={v.ratio}
-								readOnly
-								className={`w-full border-b border-black p-1 outline-none font-semibold transition-colors duration-300 ${
-									v.ratio &&
-									v.ratio !== "0.00000" &&
-									(parseFloat(v.ratio) > parseFloat(formData.upperLimit) ||
-										parseFloat(v.ratio) < parseFloat(formData.lowerLimit))
-										? "bg-red-600 text-white"
-										: "bg-gray-100 text-black"
-								}`}
-							/>
-						</div>
-
-						<div className="flex items-center">
-							<div className="flex-1">
-								<label className="text-[10px] pl-1 uppercase">
-									Qual? (y/n)
-								</label>
+			<form onSubmit={handleSubmit} className="flex flex-col gap-8">
+				{/* Responsive Side-by-Side Flex Layout */}
+				<div className="flex flex-col lg:flex-row gap-10">
+					{/* LEFT HALF: Logs Matrix + MOVED AUTOMATED CALCULATIONS */}
+					<div className="flex-1 flex flex-col gap-6">
+						{/* Document Headers */}
+						<div className="grid grid-cols-1 md:grid-cols-3 gap-3 border-b border-gray-100 pb-4">
+							<div>
+								<label className={labelStyle}>Vessel</label>
 								<input
-									name="qual"
-									value={v.qual}
-									onChange={(e) => handleVoyageChange(index, e)}
-									className="w-full border-b border-black p-1 bg-transparent outline-none text-center font-bold"
+									onChange={handleChange}
+									id="vesselName"
+									className={inputStyle}
+									type="text"
+									required
+									value={formData.vesselName || ""}
 								/>
 							</div>
-							{index > 0 && (
-								<button
-									onClick={() => removeVoyage(index)}
-									className="text-red-500 font-bold ml-1 hover:scale-125 transition-transform"
-								>
-									×
-								</button>
-							)}
-						</div>
-					</div>
-				))}
-				<button
-					onClick={addVoyage}
-					className="w-full p-2 bg-gray-200 hover:bg-gray-300 font-bold text-[10px] uppercase tracking-widest"
-				>
-					+ Add New Voyage Entry
-				</button>
-			</div>
-
-			{/* 2. READ-ONLY SUMMARY SECTION */}
-			<div className="mb-6">
-				<h2 className="text-sm font-bold bg-gray-800 text-white p-1 mb-2 uppercase">
-					2. Summary Calculations (Read-Only)
-				</h2>
-				<div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 border border-black bg-gray-50">
-					<div>
-						<label className="text-[10px] font-bold text-gray-500 uppercase">
-							Ship's Figure Totals
-						</label>
-						<input
-							value={formData.shipTotal}
-							readOnly
-							className="w-full border-b border-black p-1 bg-white font-bold"
-						/>
-					</div>
-					<div>
-						<label className="text-[10px] font-bold text-gray-500 uppercase">
-							Shore Figure Totals
-						</label>
-						<input
-							value={formData.shoreTotal}
-							readOnly
-							className="w-full border-b border-black p-1 bg-white font-bold"
-						/>
-					</div>
-					<div>
-						<label className="text-[10px] font-bold text-gray-500 uppercase">
-							Average Ratio
-						</label>
-						<input
-							value={formData.avgRatio}
-							readOnly
-							className="w-full border-b border-black p-1 bg-white font-bold"
-						/>
-					</div>
-					<div>
-						<label className="text-[10px] font-bold text-red-500 uppercase">
-							Upper Limit (+0.0003)
-						</label>
-						<input
-							value={formData.upperLimit}
-							readOnly
-							className="w-full border-b border-black p-1 bg-white font-bold text-red-600"
-						/>
-					</div>
-					<div>
-						<label className="text-[10px] font-bold text-red-500 uppercase">
-							Lower Limit (-0.0003)
-						</label>
-						<input
-							value={formData.lowerLimit}
-							readOnly
-							className="w-full border-b border-black p-1 bg-white font-bold text-red-600"
-						/>
-					</div>
-					<div>
-						<label className="text-[10px] font-bold text-blue-600 uppercase">
-							Ship's Qualifying Totals
-						</label>
-						<input
-							value={formData.shipQualTotal}
-							readOnly
-							className="w-full border-b border-black p-1 bg-white font-bold text-blue-700"
-						/>
-					</div>
-					<div>
-						<label className="text-[10px] font-bold text-blue-600 uppercase">
-							Shore Qualifying Totals
-						</label>
-						<input
-							value={formData.shoreQualTotal}
-							readOnly
-							className="w-full border-b border-black p-1 bg-white font-bold text-blue-700"
-						/>
-					</div>
-					<div>
-						<label className="text-[10px] font-bold uppercase text-black">
-							Vessel Experience Factor
-						</label>
-						<input
-							value={formData.vesselExperienceFactor}
-							readOnly
-							className="w-full border-b-2 border-black p-1 bg-yellow-100 text-lg font-black"
-						/>
-					</div>
-				</div>
-			</div>
-
-			{/* FOOTER & SIGNATURES */}
-			<div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8 border-t border-black pt-4">
-				<div className="text-[11px] leading-relaxed italic pr-4">
-					<p className="mb-2 uppercase font-bold not-italic underline">
-						Official Qualifying Voyage Rules:
-					</p>
-					<p>
-						1. The last voyage prior to structural modification and the first
-						voyage after drydock.
-					</p>
-					<p>2. Lightering operations.</p>
-					<p>3. Voyages where shore measurements are not available.</p>
-					<p>4. Voyages outside ±0.3% limits of average vessel ratio.</p>
-					<p className="mt-2 font-bold uppercase text-black">
-						VEF based on a minimum of five (5) qualifying voyages.
-					</p>
-					<p className="mt-4 opacity-70 text-[10px]">
-						The information shown above is based on data obtained from vessel
-						records and we cannot be held responsible for any inaccuracies
-						thereof.
-					</p>
-				</div>
-
-				<div className="space-y-4">
-					<div>
-						<label className="text-xs font-bold text-gray-500 uppercase">
-							Intertek Inspector
-						</label>
-						<input
-							type="text"
-							id="inspectorName"
-							onChange={handleChange}
-							placeholder="Full Name"
-							className="w-full bg-[#f8f6f6] border-b border-black p-1 outline-none"
-						/>
-					</div>
-					<div className="flex justify-between items-center border-b border-black pb-1 uppercase font-bold text-xs">
-						Representative Signatures
-						<button
-							onClick={addRep}
-							className="text-[10px] bg-blue-600 text-white px-2 py-1 rounded font-bold"
-						>
-							+ ADD REP
-						</button>
-					</div>
-					{formData.representatives.map((rep, index) => (
-						<div
-							key={index}
-							className="relative pb-4 mb-4 border-b border-gray-100 last:border-0"
-						>
-							{index > 0 && (
-								<button
-									onClick={() => removeRep(index)}
-									className="absolute -top-1 -right-1 text-red-500 font-bold hover:scale-125 transition-transform z-10"
-								>
-									×
-								</button>
-							)}
-
-							<div className="space-y-4">
-								{/* Full Name */}
-								<div>
-									<label className="text-[10px] font-bold text-gray-400 uppercase">
-										Full Name
-									</label>
-									<input
-										type="text"
-										name="name"
-										value={rep.name || ""}
-										onChange={(e) => handleRepChange(index, e)}
-										className="w-full border-b border-gray-300 bg-transparent outline-none p-1 text-sm"
-									/>
-								</div>
-
-								{/* ID and Email Grid */}
-								<div className="grid grid-cols-2 gap-4">
-									<div>
-										<label className="text-[10px] font-bold text-gray-400 uppercase">
-											ID / Passport
-										</label>
-										<input
-											type="text"
-											name="id"
-											value={rep.id || ""}
-											onChange={(e) => handleRepChange(index, e)}
-											className="w-full border-b border-gray-300 bg-transparent outline-none p-1 text-sm"
-										/>
-									</div>
-									<div>
-										<label className="text-[10px] font-bold text-gray-400 uppercase">
-											Email Address
-										</label>
-										<input
-											type="email"
-											name="email"
-											value={rep.email || ""}
-											onChange={(e) => handleRepChange(index, e)}
-											className="w-full border-b border-gray-300 bg-transparent outline-none p-1 text-sm"
-										/>
-									</div>
-								</div>
+							<div>
+								<label className={labelStyle}>Date</label>
+								<input
+									onChange={handleChange}
+									id="dateOfReport"
+									className={inputStyle}
+									type="date"
+									required
+									value={formData.dateOfReport || ""}
+								/>
+							</div>
+							<div>
+								<label className={labelStyle}>Port</label>
+								<input
+									onChange={handleChange}
+									id="portName"
+									className={inputStyle}
+									type="text"
+									required
+									value={formData.portName || ""}
+								/>
 							</div>
 						</div>
-					))}
-					<button
-						onClick={handleSave}
-						disabled={loading}
-						className="w-full bg-black text-white p-4 font-bold uppercase tracking-widest hover:bg-gray-800 disabled:bg-gray-400 transition-all shadow-md"
-					>
-						{loading ? "Processing..." : "Save Vessel Experience Factor Report"}
-					</button>
+
+						{/* Dynamic Interactive Voyage Matrix Row Builder */}
+						<div className="flex flex-col gap-4">
+							<div className="flex justify-between items-center bg-gray-100 p-2 border-l-4 border-black">
+								<h2 className="text-xs font-bold uppercase tracking-wider">
+									Historical Voyage Data Logger
+								</h2>
+								<button
+									type="button"
+									onClick={handleAddVoyageRecord}
+									className="text-[10px] bg-black text-white px-3 py-1 font-bold rounded hover:bg-gray-800 transition-all uppercase"
+								>
+									+ Add Voyage Row
+								</button>
+							</div>
+
+							<div className="flex flex-col gap-6 max-h-[400px] overflow-y-auto pr-1">
+								{formData.voyageNumbers.map((_, index) => (
+									<div
+										key={index}
+										className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-gray-50/50 p-3 border border-gray-200 rounded relative pt-8 group"
+									>
+										<span className="absolute top-1 left-2 text-[10px] font-bold bg-black text-white px-2 py-0.5 rounded">
+											Row #{index + 1}
+										</span>
+										{formData.voyageNumbers.length > 1 && (
+											<button
+												type="button"
+												onClick={() => handleRemoveVoyageRecord(index)}
+												className="absolute top-1 right-2 text-[10px] border border-red-300 text-red-500 bg-white px-2 py-0.5 rounded hover:bg-red-50 font-bold uppercase"
+											>
+												Delete Row
+											</button>
+										)}
+										<div>
+											<label className={labelStyle}>Voyage Number</label>
+											<input
+												value={formData.voyageNumbers[index]}
+												onChange={(e) =>
+													handleVoyageItemChange(
+														index,
+														e.target.value,
+														"voyageNumbers",
+													)
+												}
+												className={inputStyle}
+												type="text"
+												required
+											/>
+										</div>
+										<div>
+											<label className={labelStyle}>Date</label>
+											<input
+												value={formData.datesOfVoyages[index]}
+												onChange={(e) =>
+													handleVoyageItemChange(
+														index,
+														e.target.value,
+														"datesOfVoyages",
+													)
+												}
+												className={inputStyle}
+												type="date"
+												required
+											/>
+										</div>
+										<div>
+											<label className={labelStyle}>Load Port</label>
+											<input
+												value={formData.loadPorts[index]}
+												onChange={(e) =>
+													handleVoyageItemChange(
+														index,
+														e.target.value,
+														"loadPorts",
+													)
+												}
+												className={inputStyle}
+												type="text"
+												required
+											/>
+										</div>
+										<div>
+											<label className={labelStyle}>Cargo</label>
+											<input
+												value={formData.cargoDescriptions[index]}
+												onChange={(e) =>
+													handleVoyageItemChange(
+														index,
+														e.target.value,
+														"cargoDescriptions",
+													)
+												}
+												className={inputStyle}
+												type="text"
+												required
+											/>
+										</div>
+										<div>
+											<label className={labelStyle}>Ship's Figure</label>
+											<input
+												value={formData.shipsFigures[index]}
+												onChange={(e) =>
+													handleVoyageItemChange(
+														index,
+														e.target.value,
+														"shipsFigures",
+													)
+												}
+												className={inputStyle}
+												type="number"
+												step="any"
+												required
+											/>
+										</div>
+										<div>
+											<label className={labelStyle}>Shore Figure</label>
+											<input
+												value={formData.shoreFigures[index]}
+												onChange={(e) =>
+													handleVoyageItemChange(
+														index,
+														e.target.value,
+														"shoreFigures",
+													)
+												}
+												className={inputStyle}
+												type="number"
+												step="any"
+												required
+											/>
+										</div>
+										<div>
+											<label className={labelStyle}>
+												Ratio Ship/Shore (Auto)
+											</label>
+											<input
+												value={formData.ratiosShipShore[index] || ""}
+												className={readOnlyStyle}
+												type="number"
+												readOnly
+											/>
+										</div>
+										<div>
+											<label className={labelStyle}>Qual voy? y/n</label>
+											<input
+												value={formData.isQualifyingVoyages[index]}
+												onChange={(e) =>
+													handleVoyageItemChange(
+														index,
+														e.target.value,
+														"isQualifyingVoyages",
+													)
+												}
+												className={inputStyle}
+												type="text"
+												maxLength={1}
+												placeholder="y/n"
+												required
+											/>
+										</div>
+									</div>
+								))}
+							</div>
+						</div>
+
+						{/* MOVED SECTION: Automated Calculations Container */}
+						<div className="bg-gray-100 p-2 border-l-4 border-blue-800 mt-2">
+							<h2 className="text-xs font-bold uppercase tracking-wider">
+								Automated Summary Statistics
+							</h2>
+						</div>
+
+						<div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 border border-gray-200 rounded">
+							<div>
+								<label className={labelStyle}>Ship's Figure Totals</label>
+								<input
+									id="shipsFigureTotals"
+									className={readOnlyStyle}
+									type="number"
+									readOnly
+									value={formData.shipsFigureTotals || ""}
+								/>
+							</div>
+							<div>
+								<label className={labelStyle}>Shore Figure Totals</label>
+								<input
+									id="shoreFigureTotals"
+									className={readOnlyStyle}
+									type="number"
+									readOnly
+									value={formData.shoreFigureTotals || ""}
+								/>
+							</div>
+							<div>
+								<label className={labelStyle}>Average Ratio</label>
+								<input
+									id="averageRatio"
+									className={readOnlyStyle}
+									type="number"
+									readOnly
+									value={formData.averageRatio || ""}
+								/>
+							</div>
+							<div>
+								<label className={labelStyle}>Upper Limit (+0.0003)</label>
+								<input
+									id="upperLimit"
+									className={readOnlyStyle}
+									type="number"
+									readOnly
+									value={formData.upperLimit || ""}
+								/>
+							</div>
+							<div>
+								<label className={labelStyle}>Lower Limit (-0.0003)</label>
+								<input
+									id="lowerLimit"
+									className={readOnlyStyle}
+									type="number"
+									readOnly
+									value={formData.lowerLimit || ""}
+								/>
+							</div>
+							<div>
+								<label className={labelStyle}>Ship's Qualifying Totals</label>
+								<input
+									id="shipsQualifyingTotals"
+									className={readOnlyStyle}
+									type="number"
+									readOnly
+									value={formData.shipsQualifyingTotals || ""}
+								/>
+							</div>
+							<div>
+								<label className={labelStyle}>Shore Qualifying Totals</label>
+								<input
+									id="shoreQualifyingTotals"
+									className={readOnlyStyle}
+									type="number"
+									readOnly
+									value={formData.shoreQualifyingTotals || ""}
+								/>
+							</div>
+							<div>
+								<label className={labelStyle}>Vessel Experience Factor</label>
+								<input
+									id="vesselExperienceFactor"
+									className={readOnlyStyle}
+									type="number"
+									readOnly
+									value={formData.vesselExperienceFactor || ""}
+								/>
+							</div>
+						</div>
+					</div>
+
+					{/* RIGHT HALF: Compliance Legal statements + Refactored Multi Representatives Row Logic */}
+					<div className="flex-1 flex flex-col gap-6 border-t lg:border-t-0 lg:border-l-2 border-gray-200 lg:pl-10 pt-6 lg:pt-0">
+						{/* Compliance Notices Footnotes */}
+						<div className="bg-amber-50/60 p-4 border border-amber-200 rounded text-[11px] text-gray-700 leading-relaxed italic space-y-2">
+							<p className="indent-0">
+								<strong>Qualifying voyages include:</strong>
+								<br />
+								1. The last voyage prior to structural modification and the
+								first voyage after drydock.
+								<br />
+								2. Lightering operations.
+								<br />
+								3. Voyages where shore measurements are not available.
+								<br />
+								4. Voyages outside +0.3% limits of average vessel ratio.
+							</p>
+							<p className="indent-0 font-semibold text-black">
+								* VEF based on a minimum of five qualifying voyages.
+							</p>
+							<p className="indent-0 border-t border-amber-200/60 pt-2 text-[10px] text-gray-500">
+								The information shown above is based on data obtained from
+								vessel records and we cannot be held responsible for any
+								inaccuracies thereof.
+							</p>
+						</div>
+
+						{/* Inspector Identity Field */}
+						<div>
+							<label className={labelStyle}>Intertek Inspector</label>
+							<input
+								onChange={handleChange}
+								id="intertekInspector"
+								className={inputStyle}
+								type="text"
+								placeholder="Full Inspector Signature"
+								required
+								value={formData.intertekInspector || ""}
+							/>
+						</div>
+
+						{/* REFACTORED GROUPED WITNESS SECTION: Single button extends full layout profile matching object models */}
+						<div className="border-t border-gray-100 pt-4 space-y-4">
+							<div className="flex justify-between items-center bg-gray-50 p-2 border-l-4 border-purple-800">
+								<h3 className="text-xs font-bold uppercase tracking-wider font-serif">
+									Witness Representatives Sign-Off
+								</h3>
+								<button
+									type="button"
+									onClick={handleAddRepresentativeRow}
+									className="text-[10px] bg-black text-white px-3 py-1 font-bold rounded uppercase hover:bg-gray-800 transition-colors"
+								>
+									+ Add Representative
+								</button>
+							</div>
+
+							<div className="flex flex-col gap-4 max-h-[350px] overflow-y-auto pr-1">
+								{formData.representatives.map((representative, index) => (
+									<div
+										key={index}
+										className="grid grid-cols-1 md:grid-cols-3 gap-3 bg-gray-50 p-3 border border-gray-200 rounded relative pt-8"
+									>
+										<span className="absolute top-1 left-2 text-[9px] font-bold bg-purple-800 text-white px-2 py-0.5 rounded">
+											Witness #{index + 1}
+										</span>
+										{formData.representatives.length > 1 && (
+											<button
+												type="button"
+												onClick={() => handleRemoveRepresentativeRow(index)}
+												className="absolute top-1 right-2 text-[9px] text-red-500 border border-red-200 bg-white px-2 py-0.5 rounded hover:bg-red-50 font-bold uppercase"
+											>
+												Remove
+											</button>
+										)}
+										<div>
+											<label className={labelStyle}>Representative Name</label>
+											<input
+												value={representative.representativeName}
+												onChange={(e) =>
+													handleRepresentativeRowChange(
+														index,
+														"representativeName",
+														e.target.value,
+													)
+												}
+												className={inputStyle}
+												placeholder="Witness Full Name"
+												required
+											/>
+										</div>
+										<div>
+											<label className={labelStyle}>Representative Id</label>
+											<input
+												value={representative.representativeIdentification}
+												onChange={(e) =>
+													handleRepresentativeRowChange(
+														index,
+														"representativeIdentification",
+														e.target.value,
+													)
+												}
+												className={inputStyle}
+												placeholder="Passport/ID Number"
+												required
+											/>
+										</div>
+										<div>
+											<label className={labelStyle}>Representative Email</label>
+											<input
+												value={representative.representativeEmail}
+												type="email"
+												onChange={(e) =>
+													handleRepresentativeRowChange(
+														index,
+														"representativeEmail",
+														e.target.value,
+													)
+												}
+												className={inputStyle}
+												placeholder="active@email.com"
+												required
+											/>
+										</div>
+									</div>
+								))}
+							</div>
+						</div>
+					</div>
 				</div>
-			</div>
+
+				{/* Submission Action Anchor Footprint */}
+				<footer className="mt-4 border-t pt-6">
+					<button
+						type="submit"
+						disabled={loading}
+						className="w-full bg-black text-white p-4 font-bold uppercase hover:bg-gray-800 disabled:opacity-50 transition-all shadow-md tracking-widest text-xs font-serif"
+					>
+						{loading
+							? "Processing Official Document Data..."
+							: "Submit Vessel Experience Factor Report"}
+					</button>
+					{error && (
+						<p className="text-red-600 text-center mt-4 text-xs font-bold uppercase tracking-wider font-serif">
+							{error}
+						</p>
+					)}
+				</footer>
+			</form>
 		</main>
 	);
 }

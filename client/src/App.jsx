@@ -6,7 +6,7 @@ import About from "./pages/about";
 import Profile from "./pages/profile";
 import Header from "./components/header";
 import PrivateRoute from "./components/PrivateRoute";
-import WheighBridge from "./pages/wheighBridge";
+import WeighBridge from "./pages/weighBridge";
 import StatementOfFacts from "./pages/statementOfFacts";
 import SealingReport from "./pages/sealingReport";
 import VesselExperienceFactor from "./pages/vesselExperienceFactor";
@@ -39,7 +39,7 @@ export default function App() {
 				<Route path="/about" element={<About />} />
 				<Route element={<PrivateRoute />}>
 					<Route path="/profile" element={<Profile />} />
-					<Route path="/wheighBridge/:id?" element={<WheighBridge />} />
+					<Route path="/weighBridge/:id?" element={<WeighBridge />} />
 					<Route path="/statementOfFacts/:id?" element={<StatementOfFacts />} />
 					<Route path="/sealingReport/:id?" element={<SealingReport />} />
 					<Route

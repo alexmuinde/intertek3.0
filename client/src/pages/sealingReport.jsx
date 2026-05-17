@@ -1,361 +1,429 @@
-import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
 import { useSelector } from "react-redux";
+import { useNavigate, useParams } from "react-router-dom";
 
 export default function SealingReport() {
 	const { currentUser } = useSelector((state) => state.user);
-	const { id } = useParams();
 	const navigate = useNavigate();
-	const [formData, setFormData] = useState({
-		vessel: "",
-		port: "",
-		date: "",
-		cargo: "",
-		seals: [{ location: "", sealNumber: "" }], // Dynamic Sealing Rows
-		inspectorName: "",
-		representatives: [{ name: "", id: "", email: "" }],
-	});
+	const { id } = useParams();
+
+	const [error, setError] = useState(false);
 	const [loading, setLoading] = useState(false);
 
-	// General input changes
-	const handleChange = (e) => {
-		setFormData({ ...formData, [e.target.id]: e.target.value });
-	};
+	const [formData, setFormData] = useState({
+		userReference: currentUser._id,
+		vesselName: "",
+		portName: "",
+		dateOfReport: "",
+		cargoDescription: "",
 
-	// --- SEAL ROW LOGIC ---
-	const handleSealChange = (index, e) => {
-		const newSeals = [...formData.seals];
-		newSeals[index][e.target.name] = e.target.value;
-		setFormData({ ...formData, seals: newSeals });
-	};
+		// Dynamic Parallel Arrays tracking matching security seal logs
+		sealingLocations: [""],
+		sealNumbers: [""],
 
-	const addSeal = () => {
-		setFormData({
-			...formData,
-			seals: [...formData.seals, { location: "", sealNumber: "" }],
-		});
-	};
-
-	const removeSeal = (index) => {
-		if (formData.seals.length > 1) {
-			const newSeals = formData.seals.filter((_, i) => i !== index);
-			setFormData({ ...formData, seals: newSeals });
-		}
-	};
-
-	// --- REPRESENTATIVE LOGIC ---
-	const handleRepChange = (index, e) => {
-		const newReps = [...formData.representatives];
-		newReps[index][e.target.name] = e.target.value;
-		setFormData({ ...formData, representatives: newReps });
-	};
-
-	const addRep = () => {
-		setFormData({
-			...formData,
-			representatives: [
-				...formData.representatives,
-				{ name: "", id: "", email: "" },
-			],
-		});
-	};
-
-	const removeRep = (index) => {
-		if (formData.representatives.length > 1) {
-			const newReps = formData.representatives.filter((_, i) => i !== index);
-			setFormData({ ...formData, representatives: newReps });
-		}
-	};
+		intertekInspector: "",
+		representatives: [
+			{
+				representativeName: "",
+				representativeIdentification: "",
+				representativeEmail: "",
+			},
+		],
+	});
 
 	useEffect(() => {
-		const fetchStatus = async () => {
-			if (!id) return;
-			try {
-				const res = await fetch(`/api/sealingReport/get/${id}`);
-				const data = await res.json();
-
-				if (data.success === false) {
-					console.error(data.message);
-					return;
-				}
-
-				// CRITICAL: Format dates specifically for HTML5 inputs
-				const formattedData = {
-					...data,
-					date: data.date
-						? new Date(data.date).toISOString().split("T")[0]
-						: "",
-					dischargeLogs:
-						data.dischargeLogs?.map((log) => ({
-							...log,
-							date: log.date
-								? new Date(log.date).toISOString().split("T")[0]
+		if (id) {
+			const fetchReport = async () => {
+				setLoading(true);
+				try {
+					const res = await fetch(`/api/sealingReport/get/${id}`);
+					const data = await res.json();
+					if (data.success !== false) {
+						setFormData({
+							...data,
+							dateOfReport: data.dateOfReport
+								? data.dateOfReport.split("T")[0]
 								: "",
-						})) || [],
-				};
-
-				setFormData(formattedData);
-			} catch (error) {
-				console.error("Fetch Error:", error);
-			}
-		};
-		fetchStatus();
+						});
+					} else {
+						setError(data.message);
+					}
+				} catch (err) {
+					setError(true);
+				} finally {
+					setLoading(false);
+				}
+			};
+			fetchReport();
+		}
 	}, [id]);
 
-	const handleSave = async () => {
-		if (!currentUser) return alert("You must be logged in to save!");
+	const handleSubmit = async (e) => {
+		e.preventDefault();
 		setLoading(true);
+		setError(false);
 		try {
+			const body = id ? { ...formData, _id: id } : formData;
 			const res = await fetch("/api/sealingReport/save", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					...formData,
-					userRef: currentUser._id,
-					...(id && { _id: id }), // If 'id' exists, it updates; otherwise, it creates
-				}),
+				body: JSON.stringify(body),
 			});
 			const data = await res.json();
-
 			if (data.success !== false) {
-				alert("Report Saved!");
-				// If it was a new record (no current ID in URL), navigate to the edit path
+				alert("Record Saved Successfully!");
 				if (!id && data._id) {
-					navigate(`/sealingReport/${data._id}`); //
+					navigate(`/sealingReport/${data._id}`);
 				}
 			} else {
-				alert(data.message || "Failed to save");
+				setError(data.message);
 			}
 		} catch (err) {
-			console.error("Save Error:", err);
+			setError("Failed to establish server communication channels");
 		} finally {
 			setLoading(false);
 		}
 	};
 
+	const handleChange = (e) => {
+		const { id, value } = e.target;
+		setFormData({ ...formData, [id]: value });
+	};
+
+	// Parallel Arrays Row Append Management
+	const handleAddSealingRow = () => {
+		setFormData({
+			...formData,
+			sealingLocations: [...formData.sealingLocations, ""],
+			sealNumbers: [...formData.sealNumbers, ""],
+		});
+	};
+
+	const handleSealingItemChange = (index, value, field) => {
+		const updatedList = [...formData[field]];
+		updatedList[index] = value;
+		setFormData({ ...formData, [field]: updatedList });
+	};
+
+	const handleRemoveSealingRow = (index) => {
+		if (formData.sealingLocations.length > 1) {
+			setFormData({
+				...formData,
+				sealingLocations: formData.sealingLocations.filter(
+					(_, i) => i !== index,
+				),
+				sealNumbers: formData.sealNumbers.filter((_, i) => i !== index),
+			});
+		}
+	};
+
+	// Grouped Representative Array Rows Modifiers
+	const handleAddRepresentativeRow = () => {
+		setFormData({
+			...formData,
+			representatives: [
+				...formData.representatives,
+				{
+					representativeName: "",
+					representativeIdentification: "",
+					representativeEmail: "",
+				},
+			],
+		});
+	};
+
+	const handleRepresentativeRowChange = (index, field, value) => {
+		const updatedRepresentatives = [...formData.representatives];
+		updatedRepresentatives[index][field] = value;
+		setFormData({ ...formData, representatives: updatedRepresentatives });
+	};
+
+	const handleRemoveRepresentativeRow = (index) => {
+		if (formData.representatives.length > 1) {
+			setFormData({
+				...formData,
+				representatives: formData.representatives.filter((_, i) => i !== index),
+			});
+		}
+	};
+
+	const inputStyle =
+		"w-full bg-[#f8f6f6] p-2 border-b border-black outline-none transition-all hover:shadow-[inset_0_2px_5px_rgba(0,0,0,0.19)] focus:border focus:shadow-[2px_2px_rgba(0,0,0,0.19)] text-xs font-serif font-medium";
+	const labelStyle =
+		"block text-[11px] pl-1 mb-1 text-gray-700 font-bold tracking-wide uppercase font-serif";
+
 	return (
-		<main className="p-4 max-w-7xl mx-auto font-serif">
-			<h1 className="text-2xl font-bold text-center mb-6 uppercase tracking-widest border-b-2 border-black pb-2">
-				Sealing Report
-			</h1>
+		<main className="p-4 max-w-7xl mx-auto font-serif bg-white text-gray-900">
+			<header className="mb-4 border-b-2 border-black pb-2">
+				<h1 className="text-base font-bold text-center uppercase tracking-widest">
+					SEALING REPORT
+				</h1>
+			</header>
 
-			<div className="flex flex-col lg:flex-row gap-8">
-				{/* LEFT SECTION: Vessel & Seal Details */}
-				<div className="flex-1 border-b-2 lg:border-b-0 lg:border-r-2 border-gray-200 pr-0 lg:pr-8">
-					<div className="grid grid-cols-2 gap-4 mb-6">
-						<div>
-							<label className="text-xs font-bold uppercase text-gray-500">
-								Vessel
-							</label>
-							<input
-								type="text"
-								id="vessel"
-								onChange={handleChange}
-								value={formData.vessel}
-								className="w-full border-b border-black outline-none p-1 focus:bg-gray-50"
-							/>
+			<form onSubmit={handleSubmit} className="flex flex-col gap-8">
+				{/* Side-by-Side Split Responsive Layout Frame Container */}
+				<div className="flex flex-col lg:flex-row gap-10">
+					{/* LEFT HALF: Document Logistics Identity & Dynamic Security Seal Grid Rows */}
+					<div className="flex-1 flex flex-col gap-6">
+						<div className="bg-gray-100 p-2 border-l-4 border-black">
+							<h2 className="text-xs font-bold uppercase tracking-wider">
+								Vessel Identity Profile Headers
+							</h2>
 						</div>
-						<div>
-							<label className="text-xs font-bold uppercase text-gray-500">
-								Port
-							</label>
-							<input
-								type="text"
-								id="port"
-								onChange={handleChange}
-								value={formData.port}
-								className="w-full border-b border-black outline-none p-1"
-							/>
-						</div>
-						<div>
-							<label className="text-xs font-bold uppercase text-gray-500">
-								Date
-							</label>
-							<input
-								type="date"
-								id="date"
-								value={formData.date ? formData.date.split("T")[0] : ""}
-								onChange={handleChange}
-								className="w-full border-b border-black outline-none p-1"
-							/>
-						</div>
-						<div>
-							<label className="text-xs font-bold uppercase text-gray-500">
-								Cargo
-							</label>
-							<input
-								type="text"
-								id="cargo"
-								value={formData.cargo}
-								onChange={handleChange}
-								className="w-full border-b border-black outline-none p-1"
-							/>
-						</div>
-					</div>
 
-					<h2 className="text-sm font-bold bg-black text-white p-1 mb-4">
-						SEALING DETAILS
-					</h2>
-					<p className="text-xs italic mb-4">
-						We, the undersigned, confirm to have sealed as follows:
-					</p>
-
-					{formData.seals.map((seal, index) => (
-						<div
-							key={index}
-							className="grid grid-cols-12 gap-2 mb-4 border-b border-gray-100 pb-2 items-center"
-						>
-							<div className="col-span-5">
-								<label className="text-[10px] uppercase text-gray-400">
-									Location/Point
-								</label>
+						<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+							<div>
+								<label className={labelStyle}>Vessel</label>
 								<input
+									onChange={handleChange}
+									id="vesselName"
+									className={inputStyle}
 									type="text"
-									name="location"
-									value={seal.location}
-									onChange={(e) => handleSealChange(index, e)}
-									placeholder="e.g. Tank 1 Valve"
-									className="w-full text-sm border-none outline-none focus:bg-gray-50"
+									required
+									value={formData.vesselName || ""}
 								/>
 							</div>
-							<div className="col-span-6">
-								<label className="text-[10px] uppercase text-gray-400">
-									Seal Number
-								</label>
+							<div>
+								<label className={labelStyle}>Port</label>
 								<input
+									onChange={handleChange}
+									id="portName"
+									className={inputStyle}
 									type="text"
-									name="sealNumber"
-									value={seal.sealNumber}
-									onChange={(e) => handleSealChange(index, e)}
-									placeholder="INT 000000"
-									className="w-full text-sm border-none outline-none focus:bg-gray-50"
+									required
+									value={formData.portName || ""}
 								/>
 							</div>
-							<div className="col-span-1 text-right pt-4">
-								<button
-									onClick={() => removeSeal(index)}
-									className="text-red-500 hover:text-red-700 font-bold text-lg px-2"
-								>
-									&times;
-								</button>
+							<div>
+								<label className={labelStyle}>Date of Survey</label>
+								<input
+									onChange={handleChange}
+									id="dateOfReport"
+									className={inputStyle}
+									type="date"
+									required
+									value={formData.dateOfReport || ""}
+								/>
+							</div>
+							<div>
+								<label className={labelStyle}>Cargo Description</label>
+								<input
+									onChange={handleChange}
+									id="cargoDescription"
+									className={inputStyle}
+									type="text"
+									required
+									value={formData.cargoDescription || ""}
+								/>
 							</div>
 						</div>
-					))}
 
-					<button
-						onClick={addSeal}
-						className="text-xs bg-gray-200 px-3 py-1 rounded hover:bg-gray-300 transition-all font-bold"
-					>
-						+ ADD SEAL
-					</button>
-				</div>
-
-				{/* RIGHT SECTION: Signatures / Representatives */}
-				<div className="flex-1 lg:pl-8 flex flex-col justify-between">
-					<div className="space-y-6">
-						<h2 className="text-sm font-bold border-b border-black uppercase">
-							Authorization
-						</h2>
-
-						<div>
-							<label className="text-xs font-bold text-gray-400 uppercase">
-								Intertek Inspector
-							</label>
-							<input
-								type="text"
-								id="inspectorName"
-								onChange={handleChange}
-								value={formData.inspectorName || ""}
-								placeholder="Full Name"
-								className="w-full border-b border-gray-300 outline-none p-2 focus:bg-gray-50 transition-all"
-							/>
-						</div>
-
-						<div className="space-y-6">
-							<div className="flex justify-between items-center border-b border-black">
-								<h2 className="text-sm font-bold uppercase">
-									Authorization & Representatives
+						{/* Dynamic Track Table Row Component Grid */}
+						<div className="flex flex-col gap-4 mt-2">
+							<div className="flex justify-between items-center bg-gray-100 p-2 border-l-4 border-blue-800">
+								<h2 className="text-xs font-bold uppercase tracking-wider">
+									Security Seals Log Matrix
 								</h2>
 								<button
 									type="button"
-									onClick={addRep}
-									className="text-[10px] bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700 font-bold"
+									onClick={handleAddSealingRow}
+									className="text-[10px] bg-black text-white px-3 py-1 font-bold rounded hover:bg-gray-800 transition-all uppercase"
 								>
-									+ ADD REP
+									+ Add Sealing Row
 								</button>
 							</div>
 
-							{/* Dynamic Rep Rows - Updated to match SOF exactly */}
-							{formData.representatives.map((rep, index) => (
-								<div
-									key={index}
-									className="p-3 bg-gray-50 rounded-lg relative border border-gray-100 mb-4"
-								>
-									{index > 0 && (
-										<button
-											type="button"
-											onClick={() => removeRep(index)}
-											className="absolute top-1 right-2 text-red-500 font-bold text-lg hover:text-red-700"
-										>
-											&times;
-										</button>
-									)}
-
-									<div className="space-y-4">
+							<div className="flex flex-col gap-4 max-h-[500px] overflow-y-auto pr-1">
+								{formData.sealingLocations.map((_, index) => (
+									<div
+										key={index}
+										className="grid grid-cols-1 md:grid-cols-2 gap-3 bg-gray-50/60 p-3 border border-gray-200 rounded relative pt-8"
+									>
+										<span className="absolute top-1 left-2 text-[10px] font-bold bg-blue-800 text-white px-2 py-0.5 rounded">
+											Seal Record #{index + 1}
+										</span>
+										{formData.sealingLocations.length > 1 && (
+											<button
+												type="button"
+												onClick={() => handleRemoveSealingRow(index)}
+												className="absolute top-1 right-2 text-[10px] border border-red-300 text-red-500 bg-white px-2 py-0.5 rounded hover:bg-red-50 font-bold uppercase"
+											>
+												Delete
+											</button>
+										)}
 										<div>
-											<label className="text-[10px] font-bold text-gray-400 uppercase">
-												Representative Name
-											</label>
+											<label className={labelStyle}>Location</label>
 											<input
+												value={formData.sealingLocations[index]}
+												onChange={(e) =>
+													handleSealingItemChange(
+														index,
+														e.target.value,
+														"sealingLocations",
+													)
+												}
+												className={inputStyle}
 												type="text"
-												name="name"
-												value={rep.name || ""}
-												onChange={(e) => handleRepChange(index, e)}
-												className="w-full border-b border-gray-300 bg-transparent outline-none p-1 text-sm"
+												placeholder="e.g. Manifold / Discharge Valve"
+												required
 											/>
 										</div>
-										<div className="grid grid-cols-2 gap-4">
-											<div>
-												<label className="text-[10px] font-bold text-gray-400 uppercase">
-													ID Number
-												</label>
-												<input
-													type="text"
-													name="id"
-													value={rep.id || ""}
-													onChange={(e) => handleRepChange(index, e)}
-													className="w-full border-b border-gray-300 bg-transparent outline-none p-1 text-sm"
-												/>
-											</div>
-											<div>
-												<label className="text-[10px] font-bold text-gray-400 uppercase">
-													Email Address
-												</label>
-												<input
-													type="email"
-													name="email"
-													value={rep.email || ""}
-													onChange={(e) => handleRepChange(index, e)}
-													className="w-full border-b border-gray-300 bg-transparent outline-none p-1 text-sm"
-												/>
-											</div>
+										<div>
+											<label className={labelStyle}>Seal Number</label>
+											<input
+												value={formData.sealNumbers[index]}
+												onChange={(e) =>
+													handleSealingItemChange(
+														index,
+														e.target.value,
+														"sealNumbers",
+													)
+												}
+												className={inputStyle}
+												type="text"
+												placeholder="e.g. INT0029341"
+												required
+											/>
 										</div>
 									</div>
-								</div>
-							))}
+								))}
+							</div>
 						</div>
 					</div>
 
-					{/* Save Button Stays at the bottom */}
-					<button
-						onClick={handleSave}
-						disabled={loading}
-						className="w-full mt-8 bg-black text-white py-3 rounded font-bold hover:bg-gray-800 transition-all uppercase tracking-widest"
-					>
-						{loading ? "Saving..." : "Save Sealing Report"}
-					</button>
+					{/* RIGHT HALF: Confirm Statement, Inspector Profile, and Multiple Witnesses Object Arrays */}
+					<div className="flex-1 flex flex-col gap-6 border-t lg:border-t-0 lg:border-l-2 border-gray-200 lg:pl-10 pt-6 lg:pt-0">
+						<div className="bg-gray-100 p-2 border-l-4 border-black">
+							<h2 className="text-xs font-bold uppercase tracking-wider">
+								Official Statements & Sign-Off
+							</h2>
+						</div>
+
+						{/* Legal Confirmation Summary Notice Statement */}
+						<p className="p-3 bg-amber-50/60 border border-amber-200 rounded text-xs font-serif italic text-gray-700 leading-relaxed pl-4">
+							We, the undersigned, confirm to have sealed as follows;
+						</p>
+
+						<div>
+							<label className={labelStyle}>Intertek Inspector Name</label>
+							<input
+								onChange={handleChange}
+								id="intertekInspector"
+								className={inputStyle}
+								type="text"
+								placeholder="Full Operating Surveyor Name"
+								required
+								value={formData.intertekInspector || ""}
+							/>
+						</div>
+
+						{/* Grouped Dynamic Client Witness List Matrix Container */}
+						<div className="border-t border-gray-100 pt-4 space-y-4">
+							<div className="flex justify-between items-center bg-gray-50 p-2 border-l-4 border-purple-800">
+								<h3 className="text-xs font-bold uppercase tracking-wider font-serif">
+									Witness Representatives Authentication
+								</h3>
+								<button
+									type="button"
+									onClick={handleAddRepresentativeRow}
+									className="text-[10px] bg-black text-white px-3 py-1 font-bold rounded uppercase hover:bg-gray-800 transition-all"
+								>
+									+ Add Representative
+								</button>
+							</div>
+
+							<div className="flex flex-col gap-4 max-h-[350px] overflow-y-auto pr-1">
+								{formData.representatives.map((representative, index) => (
+									<div
+										key={index}
+										className="grid grid-cols-1 md:grid-cols-3 gap-3 bg-gray-50 p-3 border border-gray-200 rounded relative pt-8"
+									>
+										<span className="absolute top-1 left-2 text-[9px] font-bold bg-purple-800 text-white px-2 py-0.5 rounded">
+											Witness Profile #{index + 1}
+										</span>
+										{formData.representatives.length > 1 && (
+											<button
+												type="button"
+												onClick={() => handleRemoveRepresentativeRow(index)}
+												className="absolute top-1 right-2 text-[9px] text-red-500 border border-red-200 bg-white px-2 py-0.5 rounded hover:bg-red-50 font-bold uppercase"
+											>
+												Remove
+											</button>
+										)}
+										<div>
+											<label className={labelStyle}>Representative Name</label>
+											<input
+												value={representative.representativeName}
+												onChange={(e) =>
+													handleRepresentativeRowChange(
+														index,
+														"representativeName",
+														e.target.value,
+													)
+												}
+												className={inputStyle}
+												placeholder="Witness Full Name"
+												required
+											/>
+										</div>
+										<div>
+											<label className={labelStyle}>Representative ID</label>
+											<input
+												value={representative.representativeIdentification}
+												onChange={(e) =>
+													handleRepresentativeRowChange(
+														index,
+														"representativeIdentification",
+														e.target.value,
+													)
+												}
+												className={inputStyle}
+												placeholder="Passport/ID Number"
+												required
+											/>
+										</div>
+										<div>
+											<label className={labelStyle}>Representative Email</label>
+											<input
+												value={representative.representativeEmail}
+												type="email"
+												onChange={(e) =>
+													handleRepresentativeRowChange(
+														index,
+														"representativeEmail",
+														e.target.value,
+													)
+												}
+												className={inputStyle}
+												placeholder="active@email.com"
+												required
+											/>
+										</div>
+									</div>
+								))}
+							</div>
+						</div>
+					</div>
 				</div>
-			</div>
+
+				{/* Submission Action Footprint Anchor */}
+				<footer className="mt-4 border-t pt-6">
+					<button
+						type="submit"
+						disabled={loading}
+						className="w-full bg-black text-white p-4 font-bold uppercase hover:bg-gray-800 disabled:opacity-50 transition-all shadow-md tracking-widest text-xs font-serif"
+					>
+						{loading
+							? "Processing Official Document Data..."
+							: "Submit Sealing Report"}
+					</button>
+					{error && (
+						<p className="text-red-600 text-center mt-4 text-xs font-bold uppercase tracking-wider font-serif">
+							{error}
+						</p>
+					)}
+				</footer>
+			</form>
 		</main>
 	);
 }

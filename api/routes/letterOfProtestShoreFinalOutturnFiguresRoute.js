@@ -1,25 +1,32 @@
 const express = require("express");
 const {
-	saveLetterOfProtestShoreFinalOutturnFigures,
-	getLetterOfProtestShoreFinalOutturnFigures,
-	getAllLetterOfProtestShoreFinalOutturnFigures,
-	getEveryonesLetterOfProtestShoreFinalOutturnFigures,
+	saveLetterOfProtestShoreFinalOutturnFiguresReport,
+	getAllLetterOfProtestShoreFinalOutturnFiguresReports,
+	getLetterOfProtestShoreFinalOutturnFiguresReport,
+	getEveryonesLetterOfProtestShoreFinalOutturnFiguresReports,
 } = require("../controllers/letterOfProtestShoreFinalOutturnFiguresController.js");
 const { verifyToken } = require("../utils/verifyUser.js");
 
 const router = express.Router();
 
-router.post("/save", verifyToken, saveLetterOfProtestShoreFinalOutturnFigures);
+router.post(
+	"/save",
+	verifyToken,
+	saveLetterOfProtestShoreFinalOutturnFiguresReport,
+);
 router.get(
 	"/getall",
 	verifyToken,
-	getAllLetterOfProtestShoreFinalOutturnFigures,
+	getAllLetterOfProtestShoreFinalOutturnFiguresReports,
 );
-router.get("/get/:id", verifyToken, getLetterOfProtestShoreFinalOutturnFigures);
+router.get(
+	"/get/:id",
+	verifyToken,
+	getLetterOfProtestShoreFinalOutturnFiguresReport,
+);
 router.get(
 	"/geteveryones",
-	verifyToken,
-	getEveryonesLetterOfProtestShoreFinalOutturnFigures,
+	getEveryonesLetterOfProtestShoreFinalOutturnFiguresReports,
 );
 
 module.exports = router;

@@ -1,56 +1,61 @@
 const PumpingPressureLog = require("../models/pumpingPressureLogModel.js");
-const factory = require("./handlerFactory.js");
+const handlerFactory = require("./handlerFactory.js");
 
-// 1. Unified Save or Update execution routing via global factory method pattern
-exports.savePumpingPressureLog = factory.saveDocument(PumpingPressureLog);
+// Save or Update a log using the centralized factory framework blueprint
+exports.savePumpingPressureLogReport =
+	handlerFactory.saveDocument(PumpingPressureLog);
 
-// 2. Query logs array mapped under active logged-in inspector profile
-exports.getAllPumpingPressureLogs = async (req, res, next) => {
+// Retrieve all reports created by the currently logged-in user session
+exports.getAllPumpingPressureLogReports = async (request, response, next) => {
 	try {
+		const userId = request.user.id;
 		const documents = await PumpingPressureLog.find({
-			userRef: req.user.id,
-		}).sort({ updatedAt: -1 });
-
-		res.status(200).json(documents);
+			userReference: userId,
+		}).sort({
+			updatedAt: -1,
+		});
+		response.status(200).json(documents);
 	} catch (error) {
 		next(error);
 	}
 };
 
-// 3. Extract single document validating security compliance requirements
-exports.getPumpingPressureLog = async (req, res, next) => {
+// Retrieve a single specific report by ID with secure token validation checks
+exports.getPumpingPressureLogReport = async (request, response, next) => {
 	try {
-		const document = await PumpingPressureLog.findById(req.params.id);
+		const documentId = request.params.id;
+		const report = await PumpingPressureLog.findById(documentId);
 
-		if (!document) {
-			return res.status(404).json({
-				success: false,
-				message: "Pumping log file instance not found.",
-			});
+		if (!report) {
+			return response
+				.status(404)
+				.json({ success: false, message: "Report not found" });
 		}
 
-		// Enforces strict equity validation check matching Sealing Report patterns exactly
-		if (document.userRef.toString() !== req.user.id) {
-			return res.status(403).json({
-				success: false,
-				message: "Unauthorized resource access vector restriction.",
-			});
+		if (report.userReference.toString() !== request.user.id) {
+			return response
+				.status(403)
+				.json({ success: false, message: "Unauthorized access restriction" });
 		}
 
-		res.status(200).json(document);
+		response.status(200).json(report);
 	} catch (error) {
 		next(error);
 	}
 };
 
-// 4. Admin dashboard stream aggregation query pipeline feeder
-exports.getEveryonesPumpingPressureLogs = async (req, res, next) => {
+// Public/Admin endpoint to fetch every pressure log entry across all active profiles
+exports.getEveryonesPumpingPressureLogReports = async (
+	request,
+	response,
+	next,
+) => {
 	try {
 		const documents = await PumpingPressureLog.find()
-			.populate("userRef", "username avatar")
+			.populate("userReference", "username avatar")
 			.sort({ updatedAt: -1 });
 
-		res.status(200).json(documents);
+		response.status(200).json(documents);
 	} catch (error) {
 		next(error);
 	}

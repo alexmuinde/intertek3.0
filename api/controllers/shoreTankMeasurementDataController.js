@@ -1,53 +1,66 @@
-const ShoreTankMeasurement = require("../models/shoreTankMeasurementDataModel.js");
-const factory = require("./handlerFactory.js");
+const ShoreTankMeasurementData = require("../models/shoreTankMeasurementDataModel.js");
+const handlerFactory = require("./handlerFactory.js");
 
-// 1. Unified Save & Update mapping patterns using your structural factory setup
-exports.saveShoreTankMeasurement = factory.saveDocument(ShoreTankMeasurement);
+// Save or Update a report using the centralized factory blueprint
+exports.saveShoreTankMeasurementDataReport = handlerFactory.saveDocument(
+	ShoreTankMeasurementData,
+);
 
-// 2. Query all items matching current workspace owner criteria
-exports.getAllShoreTankMeasurements = async (req, res, next) => {
+// Retrieve all reports created by the currently logged-in user
+exports.getAllShoreTankMeasurementDataReports = async (
+	request,
+	response,
+	next,
+) => {
 	try {
-		const documents = await ShoreTankMeasurement.find({
-			userRef: req.user.id,
-		}).sort({ updatedAt: -1 });
-
-		res.status(200).json(documents);
+		const userId = request.user.id;
+		const documents = await ShoreTankMeasurementData.find({
+			userReference: userId,
+		}).sort({
+			updatedAt: -1,
+		});
+		response.status(200).json(documents);
 	} catch (error) {
 		next(error);
 	}
 };
 
-// 3. Single row fetch execution verification cycle
-exports.getShoreTankMeasurement = async (req, res, next) => {
+// Retrieve a single specific report by its database ID with structural security checks
+exports.getShoreTankMeasurementDataReport = async (request, response, next) => {
 	try {
-		const document = await ShoreTankMeasurement.findById(req.params.id);
+		const documentId = request.params.id;
+		const report = await ShoreTankMeasurementData.findById(documentId);
 
-		if (!document) {
-			return res
+		if (!report) {
+			return response
 				.status(404)
-				.json({ success: false, message: "Measurement record not found" });
+				.json({ success: false, message: "Report not found" });
 		}
 
-		if (document.userRef.toString() !== req.user.id) {
-			return res
+		if (report.userReference.toString() !== request.user.id) {
+			return response
 				.status(403)
-				.json({ success: false, message: "Unauthorized access" });
+				.json({ success: false, message: "Unauthorized access restriction" });
 		}
 
-		res.status(200).json(document);
+		response.status(200).json(report);
 	} catch (error) {
 		next(error);
 	}
 };
 
-// 4. Admin or general pipeline feed overview
-exports.getEveryonesShoreTankMeasurements = async (req, res, next) => {
+// Public/Admin endpoint to fetch every document entry in the entire database
+exports.getEveryonesShoreTankMeasurementDataReports = async (
+	request,
+	response,
+	next,
+) => {
 	try {
-		const documents = await ShoreTankMeasurement.find()
-			.populate("userRef", "username avatar")
+		const documents = await ShoreTankMeasurementData.find()
+			.populate("userReference", "username avatar")
 			.sort({ updatedAt: -1 });
 
-		res.status(200).json(documents);
+		response.status(200).json(documents);
 	} catch (error) {
 		next(error);
 	}

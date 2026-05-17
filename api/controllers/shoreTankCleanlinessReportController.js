@@ -1,56 +1,62 @@
 const ShoreTankCleanlinessReport = require("../models/shoreTankCleanlinessReportModel.js");
-const factory = require("./handlerFactory.js");
+const handlerFactory = require("./handlerFactory.js");
 
-// 1. Unified Save & Update - Uses factory structural pattern safely
-exports.saveShoreTankCleanlinessReport = factory.saveDocument(
+// Save or Update a cleanliness document entry using the factory handler blueprint
+exports.saveShoreTankCleanlinessReport = handlerFactory.saveDocument(
 	ShoreTankCleanlinessReport,
 );
 
-// 2. Filter records completely mapped under current session inspector ID
-exports.getAllShoreTankCleanlinessReports = async (req, res, next) => {
+// Retrieve all cleanliness reports created by the currently logged-in user session
+exports.getAllShoreTankCleanlinessReports = async (request, response, next) => {
 	try {
+		const userId = request.user.id;
 		const documents = await ShoreTankCleanlinessReport.find({
-			userRef: req.user.id,
-		}).sort({ updatedAt: -1 });
-
-		res.status(200).json(documents);
+			userReference: userId,
+		}).sort({
+			updatedAt: -1,
+		});
+		response.status(200).json(documents);
 	} catch (error) {
 		next(error);
 	}
 };
 
-// 3. Extract singular model instance verifying ownership claims
-exports.getShoreTankCleanlinessReport = async (req, res, next) => {
+// Retrieve a single specific report by ID with secure user verification checks
+exports.getShoreTankCleanlinessReport = async (request, response, next) => {
 	try {
-		const document = await ShoreTankCleanlinessReport.findById(req.params.id);
+		const documentId = request.params.id;
+		const report = await ShoreTankCleanlinessReport.findById(documentId);
 
-		if (!document) {
-			return res
+		if (!report) {
+			return response
 				.status(404)
-				.json({ success: false, message: "Cleanliness report not found" });
+				.json({ success: false, message: "Report not found" });
 		}
 
-		if (document.userRef.toString() !== req.user.id) {
-			return res.status(403).json({
-				success: false,
-				message: "Unauthorized access path restriction",
-			});
+		if (report.userReference.toString() !== request.user.id) {
+			return response
+				.status(403)
+				.json({ success: false, message: "Unauthorized access restriction" });
 		}
 
-		res.status(200).json(document);
+		response.status(200).json(report);
 	} catch (error) {
 		next(error);
 	}
 };
 
-// 4. Operational dashboard pipeline overview feeder
-exports.getEveryonesShoreTankCleanlinessReports = async (req, res, next) => {
+// Public/Admin endpoint to fetch every cleanliness document across all active surveyors
+exports.getEveryonesShoreTankCleanlinessReports = async (
+	request,
+	response,
+	next,
+) => {
 	try {
 		const documents = await ShoreTankCleanlinessReport.find()
-			.populate("userRef", "username avatar")
+			.populate("userReference", "username avatar")
 			.sort({ updatedAt: -1 });
 
-		res.status(200).json(documents);
+		response.status(200).json(documents);
 	} catch (error) {
 		next(error);
 	}

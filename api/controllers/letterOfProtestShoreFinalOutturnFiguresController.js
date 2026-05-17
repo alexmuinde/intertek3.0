@@ -1,68 +1,70 @@
 const LetterOfProtestShoreFinalOutturnFigures = require("../models/letterOfProtestShoreFinalOutturnFiguresModel.js");
-const factory = require("./handlerFactory.js");
+const handlerFactory = require("./handlerFactory.js");
 
-// 1. Save or Update via master global factory schema logic mapping pattern
-exports.saveLetterOfProtestShoreFinalOutturnFigures = factory.saveDocument(
-	LetterOfProtestShoreFinalOutturnFigures,
-);
+// Save or Update a report using the centralized factory framework blueprint
+exports.saveLetterOfProtestShoreFinalOutturnFiguresReport =
+	handlerFactory.saveDocument(LetterOfProtestShoreFinalOutturnFigures);
 
-// 2. Query logs array mapped under active logged-in inspector profile
-exports.getAllLetterOfProtestShoreFinalOutturnFigures = async (
-	req,
-	res,
+// Retrieve all reports created by the currently logged-in user session
+exports.getAllLetterOfProtestShoreFinalOutturnFiguresReports = async (
+	request,
+	response,
 	next,
 ) => {
 	try {
+		const userId = request.user.id;
 		const documents = await LetterOfProtestShoreFinalOutturnFigures.find({
-			userRef: req.user.id,
-		}).sort({ updatedAt: -1 });
-
-		res.status(200).json(documents);
+			userReference: userId,
+		}).sort({
+			updatedAt: -1,
+		});
+		response.status(200).json(documents);
 	} catch (error) {
 		next(error);
 	}
 };
 
-// 3. Extract single document validating security compliance requirements
-exports.getLetterOfProtestShoreFinalOutturnFigures = async (req, res, next) => {
+// Retrieve a single specific report by ID with secure account reference validation
+exports.getLetterOfProtestShoreFinalOutturnFiguresReport = async (
+	request,
+	response,
+	next,
+) => {
 	try {
-		const document = await LetterOfProtestShoreFinalOutturnFigures.findById(
-			req.params.id,
-		);
+		const documentId = request.params.id;
+		const report =
+			await LetterOfProtestShoreFinalOutturnFigures.findById(documentId);
 
-		if (!document) {
-			return res.status(404).json({
-				success: false,
-				message: "Final outturn letter of protest not found.",
-			});
+		if (!report) {
+			return response
+				.status(404)
+				.json({ success: false, message: "Report not found" });
 		}
 
-		// Security constraint tracking validation matching sealing report patterns exactly
-		if (document.userRef.toString() !== req.user.id) {
-			return res.status(403).json({
-				success: false,
-				message: "Unauthorized resource access vector restriction.",
-			});
+		if (report.userReference.toString() !== request.user.id) {
+			return response
+				.status(403)
+				.json({ success: false, message: "Unauthorized access restriction" });
 		}
 
-		res.status(200).json(document);
+		response.status(200).json(report);
 	} catch (error) {
 		next(error);
 	}
 };
 
-// 4. Admin dashboard stream aggregation query pipeline feeder
-exports.getEveryonesLetterOfProtestShoreFinalOutturnFigures = async (
-	req,
-	res,
+// Public/Admin endpoint to fetch every outturn report log entry inside the system database
+exports.getEveryonesLetterOfProtestShoreFinalOutturnFiguresReports = async (
+	request,
+	response,
 	next,
 ) => {
 	try {
 		const documents = await LetterOfProtestShoreFinalOutturnFigures.find()
-			.populate("userRef", "username avatar")
+			.populate("userReference", "username avatar")
 			.sort({ updatedAt: -1 });
 
-		res.status(200).json(documents);
+		response.status(200).json(documents);
 	} catch (error) {
 		next(error);
 	}

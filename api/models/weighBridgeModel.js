@@ -1,9 +1,11 @@
+// Import the Mongoose library to create our database schema and model
 const mongoose = require("mongoose");
 
-const wheighBridgeSchema = new mongoose.Schema(
+// Define the comprehensive schema for a Weighbridge Inspection Report
+const weighBridgeSchema = new mongoose.Schema(
 	{
-		// --- UPDATED USER REFERENCE FIELD ---
-		userRef: {
+		// A reference connecting this document to the User account that created it
+		userReference: {
 			type: mongoose.Schema.Types.ObjectId,
 			ref: "User",
 			required: true,
@@ -19,15 +21,15 @@ const wheighBridgeSchema = new mongoose.Schema(
 		vessel: { type: String, required: true },
 		grade: { type: String, required: true },
 		density: { type: String, required: true },
-		shoreTankNo: { type: String, required: true },
+		shoreTankNumber: { type: String, required: true },
 		temperature: { type: Number, required: true },
 		constructionMaterial: { type: String, required: true },
 		truckNumber: { type: String, required: true },
 		driversName: { type: String, required: true },
-		driversId: { type: String, required: true },
+		driversIdentification: { type: String, required: true },
 		grossWeight: { type: Number, required: true },
 		tareWeight: { type: Number, required: true },
-		nettWeight: { type: Number, required: true },
+		netWeight: { type: Number, required: true },
 		cumulativeWeight: { type: Number, required: true },
 		weighbridgeReceipt: { type: Number, required: true },
 		previousCargo: { type: String, required: true },
@@ -40,11 +42,14 @@ const wheighBridgeSchema = new mongoose.Schema(
 		isVehicleEmpty: { type: Boolean, required: true },
 		nothingAttached: { type: Boolean, required: true },
 	},
-	{ timestamps: true },
+	{ timestamps: true }, // Automatically adds and manages createdAt and updatedAt fields
 );
 
-const WheighBridge = mongoose.model("WheighBridge", wheighBridgeSchema);
-module.exports = WheighBridge;
+// Compile the schema into a Mongoose Model named 'WeighBridge'
+const WeighBridge = mongoose.model("WeighBridge", weighBridgeSchema);
+
+// Export the model for use within your controller files
+module.exports = WeighBridge;
 
 /**const mongoose = require("mongoose");
 

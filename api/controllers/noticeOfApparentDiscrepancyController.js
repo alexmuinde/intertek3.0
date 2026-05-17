@@ -1,58 +1,70 @@
 const NoticeOfApparentDiscrepancy = require("../models/noticeOfApparentDiscrepancyModel.js");
-const factory = require("./handlerFactory.js");
+const handlerFactory = require("./handlerFactory.js");
 
-// 1. Save or Update via master global factory logic
-exports.saveNoticeOfApparentDiscrepancy = factory.saveDocument(
+// Save or Update a report using the centralized factory framework blueprint
+exports.saveNoticeOfApparentDiscrepancyReport = handlerFactory.saveDocument(
 	NoticeOfApparentDiscrepancy,
 );
 
-// 2. Query logs array mapped under active logged-in inspector profile
-exports.getAllNoticeOfApparentDiscrepancies = async (req, res, next) => {
+// Retrieve all reports created by the currently logged-in user session
+exports.getAllNoticeOfApparentDiscrepancyReports = async (
+	request,
+	response,
+	next,
+) => {
 	try {
+		const userId = request.user.id;
 		const documents = await NoticeOfApparentDiscrepancy.find({
-			userRef: req.user.id,
-		}).sort({ updatedAt: -1 });
-
-		res.status(200).json(documents);
+			userReference: userId,
+		}).sort({
+			updatedAt: -1,
+		});
+		response.status(200).json(documents);
 	} catch (error) {
 		next(error);
 	}
 };
 
-// 3. Extract single document validating security compliance requirements
-exports.getNoticeOfApparentDiscrepancy = async (req, res, next) => {
+// Retrieve a single specific report by ID with secure account reference validation
+exports.getNoticeOfApparentDiscrepancyReport = async (
+	request,
+	response,
+	next,
+) => {
 	try {
-		const document = await NoticeOfApparentDiscrepancy.findById(req.params.id);
+		const documentId = request.params.id;
+		const report = await NoticeOfApparentDiscrepancy.findById(documentId);
 
-		if (!document) {
-			return res.status(404).json({
-				success: false,
-				message: "Notice of discrepancy file instance not found.",
-			});
+		if (!report) {
+			return response
+				.status(404)
+				.json({ success: false, message: "Report not found" });
 		}
 
-		// Security constraint validation matching sealing report patterns exactly
-		if (document.userRef.toString() !== req.user.id) {
-			return res.status(403).json({
-				success: false,
-				message: "Unauthorized resource access vector restriction.",
-			});
+		if (report.userReference.toString() !== request.user.id) {
+			return response
+				.status(403)
+				.json({ success: false, message: "Unauthorized access restriction" });
 		}
 
-		res.status(200).json(document);
+		response.status(200).json(report);
 	} catch (error) {
 		next(error);
 	}
 };
 
-// 4. Admin dashboard stream aggregation query pipeline feeder
-exports.getEveryonesNoticeOfApparentDiscrepancies = async (req, res, next) => {
+// Public/Admin endpoint to fetch every discrepancy report log entry inside the system database
+exports.getEveryonesNoticeOfApparentDiscrepancyReports = async (
+	request,
+	response,
+	next,
+) => {
 	try {
 		const documents = await NoticeOfApparentDiscrepancy.find()
-			.populate("userRef", "username avatar")
+			.populate("userReference", "username avatar")
 			.sort({ updatedAt: -1 });
 
-		res.status(200).json(documents);
+		response.status(200).json(documents);
 	} catch (error) {
 		next(error);
 	}

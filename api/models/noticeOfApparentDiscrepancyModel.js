@@ -1,40 +1,43 @@
 const mongoose = require("mongoose");
 
+// Grouped sub-schema for witness verification details
+const representativeSchema = new mongoose.Schema({
+	representativeName: { type: String, required: true },
+	representativeIdentification: { type: String, required: true },
+	representativeEmail: { type: String, required: true },
+});
+
+// Comprehensive schema for Notice of Apparent Discrepancy
 const noticeOfApparentDiscrepancySchema = new mongoose.Schema(
 	{
-		toAddress: { type: String, required: true },
-		vessel: { type: String, required: true },
-		date: { type: Date, required: true },
-		grade: { type: String, required: true },
-		port: { type: String, required: true },
-
-		// Section 1 Parameters
-		billOfLading: { type: String, required: true },
-		shipsFigureMombasa1: { type: String, required: true },
-		difference1: { type: String, required: true },
-		percentageDifference1: { type: String, required: true },
-
-		// Section 2 Parameters
-		figuresLoadPort: { type: String, required: true },
-		shipsFigureMombasa2: { type: String, required: true },
-		difference2: { type: String, required: true },
-		percentageDifference2: { type: String, required: true },
-
-		intertekInspector: { type: String, required: true },
-
-		representatives: [
-			{
-				name: String,
-				id: String,
-				email: String,
-			},
-		],
-
-		userRef: {
+		userReference: {
 			type: mongoose.Schema.Types.ObjectId,
 			ref: "User",
 			required: true,
 		},
+		// Core Identity Parameters
+		recipientName: { type: String, required: true },
+		vesselName: { type: String, required: true },
+		dateOfReport: { type: String, required: true },
+		cargoGrade: { type: String, required: true },
+		portName: { type: String, required: true },
+
+		// Parallel Primitive Dynamic Lists: Section 1 - Bill of Lading vs Ships Figure
+		billOfLadingFigures: { type: [Number], required: true },
+		shipsFiguresAtDischargePort: { type: [Number], required: true },
+		billOfLadingMetricTonsDifferences: { type: [Number], required: true },
+		billOfLadingPercentageDifferences: { type: [Number], required: true },
+
+		// Parallel Primitive Dynamic Lists: Section 2 - Load Port vs Ships Figure
+		loadPortFigures: { type: [Number], required: true },
+		shipsFiguresAtMombasa: { type: [Number], required: true },
+		loadPortMetricTonsDifferences: { type: [Number], required: true },
+		loadPortPercentageDifferences: { type: [Number], required: true },
+
+		intertekInspector: { type: String, required: true },
+
+		// Grouped repeatable representatives list compiled at the end
+		representatives: { type: [representativeSchema], required: true },
 	},
 	{ timestamps: true },
 );

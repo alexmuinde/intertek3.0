@@ -1,55 +1,57 @@
 const RtwsSafetyChecklist = require("../models/rtwsSafetyChecklistModel.js");
-const factory = require("./handlerFactory.js");
+const handlerFactory = require("./handlerFactory.js");
 
-// 1. Save or Update - Uses your existing factory logic
-exports.saveRtwsSafetyChecklist = factory.saveDocument(RtwsSafetyChecklist);
+exports.saveRtwsSafetyChecklistReport =
+	handlerFactory.saveDocument(RtwsSafetyChecklist);
 
-// 2. Get All - Filtered by the logged-in user for their dashboard
-exports.getAllRtwsSafetyChecklists = async (req, res, next) => {
+exports.getAllRtwsSafetyChecklistReports = async (request, response, next) => {
 	try {
-		// Sort by updatedAt so the most recent reports appear first
+		const userId = request.user.id;
 		const documents = await RtwsSafetyChecklist.find({
-			userRef: req.user.id,
-		}).sort({ updatedAt: -1 });
-
-		res.status(200).json(documents);
+			userReference: userId,
+		}).sort({
+			updatedAt: -1,
+		});
+		response.status(200).json(documents);
 	} catch (error) {
 		next(error);
 	}
 };
 
-// 3. Get Single - Specific report for Edit mode with security check
-exports.getRtwsSafetyChecklist = async (req, res, next) => {
+exports.getRtwsSafetyChecklistReport = async (request, response, next) => {
 	try {
-		const document = await RtwsSafetyChecklist.findById(req.params.id);
+		const documentId = request.params.id;
+		const report = await RtwsSafetyChecklist.findById(documentId);
 
-		if (!document) {
-			return res
+		if (!report) {
+			return response
 				.status(404)
 				.json({ success: false, message: "Report not found" });
 		}
 
-		// Security check matching your Sealing Report layout exactly
-		if (document.userRef.toString() !== req.user.id) {
-			return res
+		if (report.userReference.toString() !== request.user.id) {
+			return response
 				.status(403)
-				.json({ success: false, message: "Unauthorized access" });
+				.json({ success: false, message: "Unauthorized account access" });
 		}
 
-		res.status(200).json(document);
+		response.status(200).json(report);
 	} catch (error) {
 		next(error);
 	}
 };
 
-// 4. Public/Admin Fetcher - Shows reports from all users
-exports.getEveryonesRtwsSafetyChecklists = async (req, res, next) => {
+exports.getEveryonesRtwsSafetyChecklistReports = async (
+	request,
+	response,
+	next,
+) => {
 	try {
 		const documents = await RtwsSafetyChecklist.find()
-			.populate("userRef", "username avatar")
+			.populate("userReference", "username avatar")
 			.sort({ updatedAt: -1 });
 
-		res.status(200).json(documents);
+		response.status(200).json(documents);
 	} catch (error) {
 		next(error);
 	}

@@ -1,462 +1,503 @@
-import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
 import { useSelector } from "react-redux";
+import { useNavigate, useParams } from "react-router-dom";
 
 export default function PipelineInspectionReport() {
 	const { currentUser } = useSelector((state) => state.user);
-	const { id } = useParams();
 	const navigate = useNavigate();
+	const { id } = useParams();
+
+	const [error, setError] = useState(false);
+	const [loading, setLoading] = useState(false);
 
 	const [formData, setFormData] = useState({
-		vessel: "",
-		cargo: "",
-		client: "",
-		date: "",
+		userReference: currentUser._id,
+		vesselName: "",
+		cargoDescription: "",
+		clientName: "",
+		dateOfReport: "",
 
-		// Narrative statement fields
 		attendanceLocation: "",
-		attendanceTime: "",
-		attendanceDate: "",
-		operationType: "discharge", // discharge or loading
+		timeOfAttendance: "",
+		dateOfAttendance: "",
+		operationType: "discharge",
 
-		// Condition fields
-		conditionClean: false,
-		conditionDry: false,
-		conditionOdorFree: false,
+		isInternalSurfaceClean: false,
+		isInternalSurfaceDry: false,
+		isInternalSurfaceOdorFree: false,
 
-		// Technical specifications
 		pipelineConstructionMaterial: "Steam",
 		reportedPreviousContent: "",
 		methodsOfCleaning: "",
-		remarks: "",
-		intertekInspector: "",
 
-		// Dynamic representatives array matching Sealing Report patterns exactly
-		representatives: [{ name: "", id: "", email: "" }],
+		measurementRemarks: "",
+		intertekInspector: "",
+		representatives: [
+			{
+				representativeName: "",
+				representativeIdentification: "",
+				representativeEmail: "",
+			},
+		],
 	});
 
-	const [loading, setLoading] = useState(false);
-
-	const handleChange = (e) => {
-		const { id, type, checked, value } = e.target;
-		setFormData({
-			...formData,
-			[id]: type === "checkbox" ? checked : value,
-		});
-	};
-
-	// --- DYNAMIC REPRESENTATIVE BLOCK MANIPULATION (MATCHES SEALING REPORT EXACTLY) ---
-	const handleRepChange = (index, e) => {
-		const newReps = [...formData.representatives];
-		newReps[index][e.target.name] = e.target.value;
-		setFormData({ ...formData, representatives: newReps });
-	};
-
-	const addRep = () => {
-		setFormData({
-			...formData,
-			representatives: [
-				...formData.representatives,
-				{ name: "", id: "", email: "" },
-			],
-		});
-	};
-
-	const removeRep = (index) => {
-		if (formData.representatives.length > 1) {
-			const newReps = formData.representatives.filter((_, i) => i !== index);
-			setFormData({ ...formData, representatives: newReps });
-		}
-	};
-
-	// --- DATA RESTORATION LIFECYCLE ENGINE ---
 	useEffect(() => {
-		const fetchStatus = async () => {
-			if (!id) return;
-			try {
-				const res = await fetch(`/api/pipelineInspectionReport/get/${id}`);
-				const data = await res.json();
-
-				if (data.success === false) {
-					console.error(data.message);
-					return;
+		if (id) {
+			const fetchReport = async () => {
+				setLoading(true);
+				try {
+					const res = await fetch(`/api/pipelineInspectionReport/get/${id}`);
+					const data = await res.json();
+					if (data.success !== false) {
+						setFormData({
+							...data,
+							dateOfReport: data.dateOfReport
+								? data.dateOfReport.split("T")[0]
+								: "",
+							dateOfAttendance: data.dateOfAttendance
+								? data.dateOfAttendance.split("T")[0]
+								: "",
+						});
+					} else {
+						setError(data.message);
+					}
+				} catch (err) {
+					setError(true);
+				} finally {
+					setLoading(false);
 				}
-
-				const formattedData = {
-					...data,
-					date: data.date
-						? new Date(data.date).toISOString().split("T")[0]
-						: "",
-					attendanceDate: data.attendanceDate
-						? new Date(data.attendanceDate).toISOString().split("T")[0]
-						: "",
-				};
-
-				setFormData(formattedData);
-			} catch (error) {
-				console.error("Fetch Data Error Sequence Failed:", error);
-			}
-		};
-		fetchStatus();
+			};
+			fetchReport();
+		}
 	}, [id]);
 
-	const handleSave = async () => {
-		if (!currentUser)
-			return alert("You must be logged in to save official reports!");
+	const handleSubmit = async (e) => {
+		e.preventDefault();
 		setLoading(true);
+		setError(false);
 		try {
+			const body = id ? { ...formData, _id: id } : formData;
 			const res = await fetch("/api/pipelineInspectionReport/save", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					...formData,
-					userRef: currentUser._id,
-					...(id && { _id: id }),
-				}),
+				body: JSON.stringify(body),
 			});
 			const data = await res.json();
-
 			if (data.success !== false) {
 				alert("Pipeline Inspection Report Saved Successfully!");
 				if (!id && data._id) {
 					navigate(`/pipelineInspectionReport/${data._id}`);
 				}
 			} else {
-				alert(data.message || "Failed to commit database payload metrics.");
+				setError(data.message);
 			}
 		} catch (err) {
-			console.error("Save Execution Error Trace:", err);
+			setError("Failed to establish server communication channels");
 		} finally {
 			setLoading(false);
 		}
 	};
 
+	const handleChange = (e) => {
+		const { id, value, type, checked } = e.target;
+		setFormData({
+			...formData,
+			[id]: type === "checkbox" ? checked : value,
+		});
+	};
+
+	const handleAddRepresentativeRow = () => {
+		setFormData({
+			...formData,
+			representatives: [
+				...formData.representatives,
+				{
+					representativeName: "",
+					representativeIdentification: "",
+					representativeEmail: "",
+				},
+			],
+		});
+	};
+
+	const handleRepresentativeRowChange = (index, field, value) => {
+		const updatedRepresentatives = [...formData.representatives];
+		updatedRepresentatives[index][field] = value;
+		setFormData({ ...formData, representatives: updatedRepresentatives });
+	};
+
+	const handleRemoveRepresentativeRow = (index) => {
+		if (formData.representatives.length > 1) {
+			setFormData({
+				...formData,
+				representatives: formData.representatives.filter((_, i) => i !== index),
+			});
+		}
+	};
+
+	const inputStyle =
+		"w-full bg-[#f8f6f6] p-2 border-b border-black outline-none transition-all hover:shadow-[inset_0_2px_5px_rgba(0,0,0,0.19)] focus:border focus:shadow-[2px_2px_rgba(0,0,0,0.19)] text-xs font-serif font-medium";
+	const inlineInputStyle =
+		"bg-[#f8f6f6] p-1 border-b border-black outline-none font-serif font-medium focus:border focus:border-black transition-all text-xs text-center mx-1 w-36";
+	const selectStyle =
+		"w-full bg-[#f8f6f6] p-2 border-b border-black outline-none text-xs font-serif font-medium focus:border focus:border-black transition-all";
+	const labelStyle =
+		"block text-[11px] pl-1 mb-1 text-gray-700 font-bold tracking-wide uppercase font-serif";
+	const checkboxStyle = "w-4 h-4 cursor-pointer accent-black";
+
 	return (
-		<main className="p-4 max-w-7xl mx-auto font-serif">
-			<h1 className="text-2xl font-bold text-center mb-6 uppercase tracking-widest border-b-2 border-black pb-2">
-				Pipeline Inspection Report - Pigging
-			</h1>
+		<main className="p-4 max-w-7xl mx-auto font-serif bg-white text-gray-900">
+			{/* Removed headerDiv element matrix track directly from here */}
 
-			{/* MATCHES THE DUAL-COLUMN RESPONSIVE LAYOUT OF THE SEALING REPORT */}
-			<div className="flex flex-col lg:flex-row gap-8">
-				{/* LEFT SECTION: Vessel Info, Paragraph narrative, & Technical specifications */}
-				<div className="flex-1 border-b-2 lg:border-b-0 lg:border-r-2 border-gray-200 pr-0 lg:pr-8 space-y-6">
-					<div className="grid grid-cols-2 gap-4">
-						<div>
-							<label className="text-xs font-bold uppercase text-gray-500">
-								Vessel
-							</label>
-							<input
-								type="text"
-								id="vessel"
-								onChange={handleChange}
-								value={formData.vessel}
-								className="w-full border-b border-black outline-none p-1 focus:bg-gray-50 text-sm"
-								required
-							/>
+			<header className="mb-4 border-b-2 border-black pb-2">
+				<h1 className="text-base font-bold text-center uppercase tracking-widest">
+					PIPELINE INSPECTION REPORT - PIGGING
+				</h1>
+			</header>
+
+			<form onSubmit={handleSubmit} className="flex flex-col gap-8">
+				<div className="flex flex-col lg:flex-row gap-10">
+					{/* LEFT HALF: Document Logistics Framing & Inline Narrative Statement */}
+					<div className="flex-1 flex flex-col gap-6">
+						<div className="bg-gray-100 p-2 border-l-4 border-black">
+							<h2 className="text-xs font-bold uppercase tracking-wider">
+								Logistics Context Headers
+							</h2>
 						</div>
-						<div>
-							<label className="text-xs font-bold uppercase text-gray-500">
-								Cargo
-							</label>
-							<input
-								type="text"
-								id="cargo"
-								onChange={handleChange}
-								value={formData.cargo}
-								className="w-full border-b border-black outline-none p-1 focus:bg-gray-50 text-sm"
-								required
-							/>
+
+						<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+							<div>
+								<label className={labelStyle}>Vessel</label>
+								<input
+									onChange={handleChange}
+									id="vesselName"
+									className={inputStyle}
+									type="text"
+									required
+									value={formData.vesselName || ""}
+								/>
+							</div>
+							<div>
+								<label className={labelStyle}>Cargo</label>
+								<input
+									onChange={handleChange}
+									id="cargoDescription"
+									className={inputStyle}
+									type="text"
+									required
+									value={formData.cargoDescription || ""}
+								/>
+							</div>
+							<div>
+								<label className={labelStyle}>Client</label>
+								<input
+									onChange={handleChange}
+									id="clientName"
+									className={inputStyle}
+									type="text"
+									required
+									value={formData.clientName || ""}
+								/>
+							</div>
+							<div>
+								<label className={labelStyle}>Date of Report</label>
+								<input
+									onChange={handleChange}
+									id="dateOfReport"
+									className={inputStyle}
+									type="date"
+									required
+									value={formData.dateOfReport || ""}
+								/>
+							</div>
 						</div>
-						<div>
-							<label className="text-xs font-bold uppercase text-gray-500">
-								Client
-							</label>
-							<input
-								type="text"
-								id="client"
-								onChange={handleChange}
-								value={formData.client}
-								className="w-full border-b border-black outline-none p-1 focus:bg-gray-50 text-sm"
-								required
-							/>
+
+						<div className="p-4 bg-gray-50 border border-gray-200 rounded text-xs font-serif leading-relaxed text-gray-800 shadow-inner">
+							<p className="indent-0">
+								We attended at
+								<input
+									onChange={handleChange}
+									id="attendanceLocation"
+									className={inlineInputStyle}
+									type="text"
+									placeholder="Terminal / Terminal Facility"
+									required
+									value={formData.attendanceLocation || ""}
+								/>
+								at
+								<input
+									onChange={handleChange}
+									id="timeOfAttendance"
+									className={`${inlineInputStyle} w-24`}
+									type="time"
+									required
+									value={formData.timeOfAttendance || ""}
+								/>
+								, on the
+								<input
+									onChange={handleChange}
+									id="dateOfAttendance"
+									className={`${inlineInputStyle} w-32`}
+									type="date"
+									required
+									value={formData.dateOfAttendance || ""}
+								/>
+								to visually inspect shoreline for cleanliness before
+								<select
+									id="operationType"
+									className="bg-[#f8f6f6] p-1 border-b border-black outline-none font-serif font-medium text-xs rounded mx-1"
+									onChange={handleChange}
+									value={formData.operationType}
+								>
+									<option value="discharge">discharge</option>
+									<option value="loading">loading</option>
+								</select>
+								of above named product and report as follows:
+							</p>
 						</div>
-						<div>
-							<label className="text-xs font-bold uppercase text-gray-500">
-								Date
-							</label>
-							<input
-								type="date"
-								id="date"
-								onChange={handleChange}
-								value={formData.date}
-								className="w-full border-b border-black outline-none p-1 text-sm"
-								required
-							/>
+
+						<div className="bg-gray-50 border border-gray-200 rounded p-4 flex flex-col gap-3">
+							<span className="text-[10px] font-bold text-gray-400 font-serif uppercase tracking-wider border-b pb-1">
+								Condition of Internal Surfaces
+							</span>
+							<div className="flex flex-wrap gap-8 items-center pl-1">
+								<div className="flex items-center gap-2.5">
+									<input
+										onChange={handleChange}
+										type="checkbox"
+										id="isInternalSurfaceClean"
+										className={checkboxStyle}
+										checked={formData.isInternalSurfaceClean}
+									/>
+									<label
+										htmlFor="isInternalSurfaceClean"
+										className="text-xs cursor-pointer font-bold uppercase tracking-wide"
+									>
+										Clean
+									</label>
+								</div>
+								<div className="flex items-center gap-2.5">
+									<input
+										onChange={handleChange}
+										type="checkbox"
+										id="isInternalSurfaceDry"
+										className={checkboxStyle}
+										checked={formData.isInternalSurfaceDry}
+									/>
+									<label
+										htmlFor="isInternalSurfaceDry"
+										className="text-xs cursor-pointer font-bold uppercase tracking-wide"
+									>
+										Dry
+									</label>
+								</div>
+								<div className="flex items-center gap-2.5">
+									<input
+										onChange={handleChange}
+										type="checkbox"
+										id="isInternalSurfaceOdorFree"
+										className={checkboxStyle}
+										checked={formData.isInternalSurfaceOdorFree}
+									/>
+									<label
+										htmlFor="isInternalSurfaceOdorFree"
+										className="text-xs cursor-pointer font-bold uppercase tracking-wide"
+									>
+										Odor Free
+									</label>
+								</div>
+							</div>
+						</div>
+
+						<div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+							<div>
+								<label className={labelStyle}>
+									Pipeline Construction Material
+								</label>
+								<select
+									id="pipelineConstructionMaterial"
+									className={selectStyle}
+									onChange={handleChange}
+									value={formData.pipelineConstructionMaterial}
+								>
+									<option value="Steam">Steam</option>
+									<option value="Mild">Mild</option>
+									<option value="Coated">Coated</option>
+								</select>
+							</div>
+							<div>
+								<label className={labelStyle}>Reported Previous Content</label>
+								<input
+									onChange={handleChange}
+									id="reportedPreviousContent"
+									className={inputStyle}
+									type="text"
+									required
+									value={formData.reportedPreviousContent || ""}
+								/>
+							</div>
+							<div>
+								<label className={labelStyle}>Methods of Cleaning</label>
+								<input
+									onChange={handleChange}
+									id="methodsOfCleaning"
+									className={inputStyle}
+									type="text"
+									required
+									value={formData.methodsOfCleaning || ""}
+								/>
+							</div>
 						</div>
 					</div>
 
-					{/* Embedded Paragraph Statement Block */}
-					<p className="p-3 bg-gray-50 rounded border border-gray-200 text-sm leading-relaxed">
-						We attended at{" "}
-						<input
-							type="text"
-							id="attendanceLocation"
-							placeholder="Location"
-							value={formData.attendanceLocation}
-							onChange={handleChange}
-							className="border-b border-black outline-none bg-transparent px-1 font-bold inline-block text-center w-36 text-sm"
-							required
-						/>{" "}
-						at{" "}
-						<input
-							type="time"
-							id="attendanceTime"
-							value={formData.attendanceTime}
-							onChange={handleChange}
-							className="border-b border-black outline-none bg-transparent px-1 font-bold inline-block text-center text-sm"
-							required
-						/>
-						{" , on the "}
-						<input
-							type="date"
-							id="attendanceDate"
-							value={formData.attendanceDate}
-							onChange={handleChange}
-							className="border-b border-black outline-none bg-transparent px-1 font-bold inline-block text-center text-sm"
-							required
-						/>{" "}
-						to visually inspect shoreline for cleanliness before{" "}
-						<select
-							id="operationType"
-							value={formData.operationType}
-							onChange={handleChange}
-							className="border-b border-black outline-none bg-white font-bold px-1 text-sm cursor-pointer"
-						>
-							<option value="discharge">discharge</option>
-							<option value="loading">loading</option>
-						</select>{" "}
-						of above named product and report as follows:
-					</p>
-
-					{/* Checklist Matrix Area */}
-					<div>
-						<h2 className="text-sm font-bold bg-black text-white p-1 mb-4 uppercase tracking-wider">
-							Condition of Internal Surfaces
-						</h2>
-						<div className="flex gap-6 p-3 bg-gray-50 rounded border border-gray-200">
-							<label className="flex items-center gap-2 text-xs uppercase font-bold cursor-pointer">
-								<input
-									type="checkbox"
-									id="conditionClean"
-									checked={formData.conditionClean}
-									onChange={handleChange}
-									className="w-4 h-4 accent-black"
-								/>
-								Clean
-							</label>
-							<label className="flex items-center gap-2 text-xs uppercase font-bold cursor-pointer">
-								<input
-									type="checkbox"
-									id="conditionDry"
-									checked={formData.conditionDry}
-									onChange={handleChange}
-									className="w-4 h-4 accent-black"
-								/>
-								Dry
-							</label>
-							<label className="flex items-center gap-2 text-xs uppercase font-bold cursor-pointer">
-								<input
-									type="checkbox"
-									id="conditionOdorFree"
-									checked={formData.conditionOdorFree}
-									onChange={handleChange}
-									className="w-4 h-4 accent-black"
-								/>
-								Odor Free
-							</label>
+					{/* RIGHT HALF: Legals, Observations Remarks, Inspector Name, and Grouped Witnesses */}
+					<div className="flex-1 flex flex-col gap-6 border-t lg:border-t-0 lg:border-l-2 border-gray-200 lg:pl-10 pt-6 lg:pt-0">
+						<div className="bg-gray-100 p-2 border-l-4 border-black">
+							<h2 className="text-xs font-bold uppercase tracking-wider">
+								Certifications & Observations
+							</h2>
 						</div>
-					</div>
 
-					{/* Technical Specifications Area */}
-					<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-						<div>
-							<label className="text-xs font-bold uppercase text-gray-500">
-								Pipeline Construction Material
-							</label>
-							<select
-								id="pipelineConstructionMaterial"
-								value={formData.pipelineConstructionMaterial}
-								onChange={handleChange}
-								className="w-full border-b border-black outline-none p-1.5 bg-white text-sm"
-								required
-							>
-								<option value="Steam">Steam</option>
-								<option value="Mild">Mild</option>
-								<option value="Coated">Coated</option>
-							</select>
+						<div className="bg-amber-50/60 p-4 border border-amber-200 rounded text-[11px] text-gray-700 leading-relaxed font-serif italic space-y-3">
+							<p className="indent-0">
+								We certify that in our opinion, according to our visual
+								inspection and considering the method of cleaning and previous
+								content by the terminal representatives, the above pipeline has
+								been found to be in clean condition for conveying the above
+								mentioned product.
+							</p>
 						</div>
+
 						<div>
-							<label className="text-xs font-bold uppercase text-gray-500">
-								Reported Previous Content
-							</label>
+							<label className={labelStyle}>Remarks</label>
 							<input
-								type="text"
-								id="reportedPreviousContent"
 								onChange={handleChange}
-								value={formData.reportedPreviousContent}
-								className="w-full border-b border-black outline-none p-1.5 focus:bg-gray-50 text-sm"
-								required
-							/>
-						</div>
-						<div>
-							<label className="text-xs font-bold uppercase text-gray-500">
-								Methods of Cleaning
-							</label>
-							<input
+								id="measurementRemarks"
+								className={inputStyle}
 								type="text"
-								id="methodsOfCleaning"
-								onChange={handleChange}
-								value={formData.methodsOfCleaning}
-								className="w-full border-b border-black outline-none p-1.5 focus:bg-gray-50 text-sm"
 								required
-							/>
-						</div>
-					</div>
-				</div>
-
-				{/* RIGHT SECTION: Signatures, Authorization & Representative Dynamic Cards */}
-				<div className="flex-1 lg:pl-8 flex flex-col justify-between space-y-6">
-					<div className="space-y-6">
-						<div className="p-3 bg-gray-50 border-l-4 border-black font-medium italic text-xs leading-relaxed text-gray-700">
-							We certify that in our opinion, according to our visual inspection
-							and considering the method of cleaning and previous content by the
-							terminal representatives, the above pipeline has been found to be
-							in clean condition for conveying the above mentioned product.
-						</div>
-
-						<div>
-							<label className="text-xs font-bold uppercase text-gray-500">
-								Remarks
-							</label>
-							<input
-								type="text"
-								id="remarks"
-								onChange={handleChange}
-								value={formData.remarks}
-								className="w-full border-b border-black outline-none p-2 focus:bg-gray-50 text-sm"
-								required
+								value={formData.measurementRemarks || ""}
 							/>
 						</div>
 
-						<h2 className="text-sm font-bold border-b border-black uppercase tracking-wider">
-							Authorization
-						</h2>
-
 						<div>
-							<label className="text-xs font-bold text-gray-400 uppercase">
-								Intertek Inspector
-							</label>
+							<label className={labelStyle}>Intertek Inspector Name</label>
 							<input
-								type="text"
+								onChange={handleChange}
 								id="intertekInspector"
-								onChange={handleChange}
-								value={formData.intertekInspector}
-								placeholder="Inspector Full Name"
-								className="w-full border-b border-gray-300 outline-none p-2 focus:bg-gray-50 text-sm font-bold transition-all"
+								className={inputStyle}
+								type="text"
+								placeholder="Full Operational Inspector Name"
 								required
+								value={formData.intertekInspector || ""}
 							/>
 						</div>
 
-						{/* DYNAMIC REPRESENTATIVES RESPONSIVE PANEL LAYOUT (MATCHES THE STRUCTURE OF THE COPIED SEALS MATRIX) */}
-						<div className="space-y-6">
-							<div className="flex justify-between items-center border-b border-black">
-								<h2 className="text-sm font-bold uppercase">
-									Authorization & Representatives
-								</h2>
+						<div className="border-t border-gray-100 pt-4 space-y-4">
+							<div className="flex justify-between items-center bg-gray-50 p-2 border-l-4 border-purple-800">
+								<h3 className="text-xs font-bold uppercase tracking-wider font-serif">
+									Terminal Witness Sign-Off
+								</h3>
 								<button
 									type="button"
-									onClick={addRep}
-									className="text-[10px] bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700 font-bold"
+									onClick={handleAddRepresentativeRow}
+									className="text-[10px] bg-black text-white px-3 py-1 font-bold rounded uppercase hover:bg-gray-800 transition-all"
 								>
-									+ ADD REP
+									+ Add Representative
 								</button>
 							</div>
 
-							{formData.representatives.map((rep, index) => (
-								<div
-									key={index}
-									className="p-3 bg-gray-50 rounded-lg relative border border-gray-100 mb-4"
-								>
-									{index > 0 && (
-										<button
-											type="button"
-											onClick={() => removeRep(index)}
-											className="absolute top-1 right-2 text-red-500 font-bold text-lg hover:text-red-700"
-										>
-											&times;
-										</button>
-									)}
-
-									<div className="space-y-4">
+							<div className="flex flex-col gap-4 max-h-[350px] overflow-y-auto pr-1">
+								{formData.representatives.map((representative, index) => (
+									<div
+										key={index}
+										className="grid grid-cols-1 md:grid-cols-3 gap-3 bg-gray-50 p-3 border border-gray-200 rounded relative pt-8"
+									>
+										<span className="absolute top-1 left-2 text-[9px] font-bold bg-purple-800 text-white px-2 py-0.5 rounded">
+											Witness Profile #{index + 1}
+										</span>
+										{formData.representatives.length > 1 && (
+											<button
+												type="button"
+												onClick={() => handleRemoveRepresentativeRow(index)}
+												className="absolute top-1 right-2 text-[9px] text-red-500 border border-red-200 bg-white px-2 py-0.5 rounded hover:bg-red-50 font-bold uppercase"
+											>
+												Remove
+											</button>
+										)}
 										<div>
-											<label className="text-[10px] font-bold text-gray-400 uppercase">
-												Representative Name
-											</label>
+											<label className={labelStyle}>Representative Name</label>
 											<input
-												type="text"
-												name="name"
-												value={rep.name || ""}
-												onChange={(e) => handleRepChange(index, e)}
-												className="w-full border-b border-gray-300 bg-transparent outline-none p-1 text-sm"
+												value={representative.representativeName}
+												onChange={(e) =>
+													handleRepresentativeRowChange(
+														index,
+														"representativeName",
+														e.target.value,
+													)
+												}
+												className={inputStyle}
+												placeholder="Witness Full Name"
 												required
 											/>
 										</div>
-										<div className="grid grid-cols-2 gap-4">
-											<div>
-												<label className="text-[10px] font-bold text-gray-400 uppercase">
-													ID Number
-												</label>
-												<input
-													type="text"
-													name="id"
-													value={rep.id || ""}
-													onChange={(e) => handleRepChange(index, e)}
-													className="w-full border-b border-gray-300 bg-transparent outline-none p-1 text-sm"
-													required
-												/>
-											</div>
-											<div>
-												<label className="text-[10px] font-bold text-gray-400 uppercase">
-													Email Address
-												</label>
-												<input
-													type="email"
-													name="email"
-													value={rep.email || ""}
-													onChange={(e) => handleRepChange(index, e)}
-													className="w-full border-b border-gray-300 bg-transparent outline-none p-1 text-sm"
-													required
-												/>
-											</div>
+										<div>
+											<label className={labelStyle}>Representative ID</label>
+											<input
+												value={representative.representativeIdentification}
+												onChange={(e) =>
+													handleRepresentativeRowChange(
+														index,
+														"representativeIdentification",
+														e.target.value,
+													)
+												}
+												className={inputStyle}
+												placeholder="Passport/ID Number"
+												required
+											/>
+										</div>
+										<div>
+											<label className={labelStyle}>Representative Email</label>
+											<input
+												value={representative.representativeEmail}
+												type="email"
+												onChange={(e) =>
+													handleRepresentativeRowChange(
+														index,
+														"representativeEmail",
+														e.target.value,
+													)
+												}
+												className={inputStyle}
+												placeholder="active@email.com"
+												required
+											/>
 										</div>
 									</div>
-								</div>
-							))}
+								))}
+							</div>
 						</div>
 					</div>
+				</div>
 
+				<footer className="mt-4 border-t pt-6 bg-transparent">
 					<button
-						onClick={handleSave}
+						type="submit"
 						disabled={loading}
-						className="w-full mt-8 bg-black text-white py-3 rounded font-bold hover:bg-gray-800 transition-all uppercase tracking-widest text-sm"
+						className="w-full bg-black text-white p-4 font-bold uppercase hover:bg-gray-800 disabled:opacity-50 transition-all shadow-md tracking-widest text-xs font-serif"
 					>
 						{loading
-							? "Processing Document Storage..."
-							: "Save Pipeline Inspection Report"}
+							? "Processing Official Document Data..."
+							: "Submit Pipeline Inspection Report"}
 					</button>
-				</div>
-			</div>
+					{error && (
+						<p className="text-red-600 text-center mt-4 text-xs font-bold uppercase tracking-wider font-serif">
+							{error}
+						</p>
+					)}
+				</footer>
+			</form>
 		</main>
 	);
 }

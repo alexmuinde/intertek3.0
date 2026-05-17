@@ -1,48 +1,62 @@
 const VesselDischargeStatus = require("../models/vesselDischargeStatusModel.js");
-const factory = require("./handlerFactory.js");
+const handlerFactory = require("./handlerFactory.js");
 
-// Save or Update
-exports.saveVesselDischargeStatus = factory.saveDocument(VesselDischargeStatus);
+exports.saveVesselDischargeStatusReport = handlerFactory.saveDocument(
+	VesselDischargeStatus,
+);
 
-// Get User Specific Reports
-exports.getAllVesselDischargeStatus = async (req, res, next) => {
+exports.getAllVesselDischargeStatusReports = async (
+	request,
+	response,
+	next,
+) => {
 	try {
+		const userId = request.user.id;
 		const documents = await VesselDischargeStatus.find({
-			userRef: req.user.id,
-		}).sort({ updatedAt: -1 });
-		res.status(200).json(documents);
+			userReference: userId,
+		}).sort({
+			updatedAt: -1,
+		});
+		response.status(200).json(documents);
 	} catch (error) {
 		next(error);
 	}
 };
 
-// Get Single Report
-exports.getVesselDischargeStatus = async (req, res, next) => {
+exports.getVesselDischargeStatusReport = async (request, response, next) => {
 	try {
-		const document = await VesselDischargeStatus.findById(req.params.id);
-		if (!document) {
-			return res
+		const documentId = request.params.id;
+		const report = await VesselDischargeStatus.findById(documentId);
+
+		if (!report) {
+			return response
 				.status(404)
-				.json({ success: false, message: "Status report not found" });
+				.json({ success: false, message: "Report not found" });
 		}
-		if (document.userRef !== req.user.id) {
-			return res
+
+		if (report.userReference.toString() !== request.user.id) {
+			return response
 				.status(403)
-				.json({ success: false, message: "Unauthorized access" });
+				.json({ success: false, message: "Unauthorized access restriction" });
 		}
-		res.status(200).json(document);
+
+		response.status(200).json(report);
 	} catch (error) {
 		next(error);
 	}
 };
 
-// Global/Admin View
-exports.getEveryonesVesselDischargeStatus = async (req, res, next) => {
+exports.getEveryonesVesselDischargeStatusReports = async (
+	request,
+	response,
+	next,
+) => {
 	try {
 		const documents = await VesselDischargeStatus.find()
-			.populate("userRef", "username avatar")
+			.populate("userReference", "username avatar")
 			.sort({ updatedAt: -1 });
-		res.status(200).json(documents);
+
+		response.status(200).json(documents);
 	} catch (error) {
 		next(error);
 	}

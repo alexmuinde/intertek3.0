@@ -1,17 +1,17 @@
 const express = require("express");
 const {
-	saveVesselDischargeStatus,
-	getVesselDischargeStatus,
-	getAllVesselDischargeStatus,
-	getEveryonesVesselDischargeStatus,
+	saveVesselDischargeStatusReport,
+	getAllVesselDischargeStatusReports,
+	getVesselDischargeStatusReport,
+	getEveryonesVesselDischargeStatusReports,
 } = require("../controllers/vesselDischargeStatusController.js");
 const { verifyToken } = require("../utils/verifyUser.js");
 
 const router = express.Router();
 
-router.post("/save", verifyToken, saveVesselDischargeStatus);
-router.get("/getall", verifyToken, getAllVesselDischargeStatus);
-router.get("/get/:id", verifyToken, getVesselDischargeStatus);
-router.get("/geteveryones", verifyToken, getEveryonesVesselDischargeStatus);
+router.post("/save", verifyToken, saveVesselDischargeStatusReport);
+router.get("/getall", verifyToken, getAllVesselDischargeStatusReports);
+router.get("/get/:id", verifyToken, getVesselDischargeStatusReport);
+router.get("/geteveryones", getEveryonesVesselDischargeStatusReports);
 
 module.exports = router;

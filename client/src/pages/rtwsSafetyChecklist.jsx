@@ -1,476 +1,559 @@
-import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
 import { useSelector } from "react-redux";
+import { useNavigate, useParams } from "react-router-dom";
 
 export default function RtwsSafetyChecklist() {
 	const { currentUser } = useSelector((state) => state.user);
-	const { id } = useParams();
 	const navigate = useNavigate();
+	const { id } = useParams();
+
+	const [error, setError] = useState(false);
+	const [loading, setLoading] = useState(false);
 
 	const [formData, setFormData] = useState({
-		intertekInspectorName: "",
+		userReference: currentUser._id,
+		intertekInspector: "",
 		timeOfInspection: "",
 		dateOfInspection: "",
 		placeOfInspection: "",
-		client: "",
+		clientName: "",
 		truckNumber: "",
-		transporter: "",
+		transporterCompany: "",
 		driversName: "",
 		previousCargo: "",
-		driversId: "",
-		toLoad: "",
+		driversIdentification: "",
+		cargoToLoad: "",
 
-		// Dynamic Compartment tracking array
-		compartments: [{ compartmentNumber: "" }],
-		totalCapacity: "0",
+		compartmentCapacities: [""],
+		totalCompartmentCapacity: 0, // Read-Only Auto-calculated state parameter
 
-		// All 27 Standard Safety Checklist Item States
-		checkItem1: false,
-		checkItem2: false,
-		checkItem3: false,
-		checkItem4: false,
-		checkItem5: false,
-		checkItem6: false,
-		checkItem7: false,
-		checkItem8: false,
-		checkItem9: false,
-		checkItem10: false,
-		checkItem11: false,
-		checkItem12: false,
-		checkItem13: false,
-		checkItem14: false,
-		checkItem15: false,
-		checkItem16: false,
-		checkItem17: false,
-		checkItem18: false,
-		checkItem19: false,
-		checkItem20: false,
-		checkItem21: false,
-		checkItem22: false,
-		checkItem23: false,
-		checkItem24: false,
-		checkItem25: false,
-		checkItem26: false,
-		checkItem27: false,
+		hasNoPreviousLeaks: false,
+		hasSeatBeltsFitted: false,
+		areSeatBeltsMaintained: false,
+		hasSpeedGovernorCertificate: false,
+		hasFireExtinguisher: false,
+		hasSafetyToolsAndSpareWheel: false,
+		hasStoppersFitted: false,
+		areTiresFreeFromWear: false,
+		wasRiskAssessmentCarriedOut: false,
+		wereAllDocumentsChecked: false,
+		wereCapsAndValvesRemoved: false,
+		areCompartmentsCleanDryOdorFree: false,
+		areTopSurfacesCleanAndSafe: false,
+		wereUndersideHatchesInspected: false,
+		werePersonalProtectiveEquipmentUsed: false,
+		wasRagTestPerformed: false,
+		areInternalSurfacesCleanDryOdorFree: false,
+		wereCoamingAreasInspected: false,
+		wasCertificateStatusCompleted: false,
+		wereRejectionReasonsStipulated: false,
+		wasCertificateDulyFilled: false,
+		wasCertificateCopyRetained: false,
+		wasSamePreviousCargoConfirmed: false,
+		wasForeignProductAbsenceVerified: false,
+		wasSecondOpinionSought: false,
+		wereDipsticksVerifiedAtInspection: false,
+		wereDipsticksVerifiedAtGantry: false,
 	});
 
-	const [loading, setLoading] = useState(false);
-
-	// --- AUTO-CALCULATION ENGINE FOR COMPARTMENTS ---
+	// --- REAL-TIME AUTOMATIC TOTAL CAPACITY COMPUTATION ENGINE ---
 	useEffect(() => {
-		let totalCapCalc = 0;
-		formData.compartments.forEach((comp) => {
-			const value = parseFloat(comp.compartmentNumber) || 0;
-			totalCapCalc += value;
-		});
+		const calculatedGrandTotal = formData.compartmentCapacities.reduce(
+			(accumulator, currentCapacityValue) =>
+				accumulator + (parseFloat(currentCapacityValue) || 0),
+			0,
+		);
 
-		if (formData.totalCapacity !== totalCapCalc.toString()) {
-			setFormData((prev) => ({
-				...prev,
-				totalCapacity: totalCapCalc.toString(),
-			}));
+		setFormData((prevFormData) => ({
+			...prevFormData,
+			totalCompartmentCapacity: calculatedGrandTotal,
+		}));
+	}, [formData.compartmentCapacities]);
+
+	useEffect(() => {
+		if (id) {
+			const fetchReport = async () => {
+				setLoading(true);
+				try {
+					const res = await fetch(`/api/rtwsSafetyChecklist/get/${id}`);
+					const data = await res.json();
+					if (data.success !== false) {
+						setFormData({
+							...data,
+							dateOfInspection: data.dateOfInspection
+								? data.dateOfInspection.split("T")[0]
+								: "",
+						});
+					} else {
+						setError(data.message);
+					}
+				} catch (err) {
+					setError(true);
+				} finally {
+					setLoading(false);
+				}
+			};
+			fetchReport();
 		}
-	}, [formData.compartments, formData.totalCapacity]);
+	}, [id]);
+
+	const handleSubmit = async (e) => {
+		e.preventDefault();
+		setLoading(true);
+		setError(false);
+		try {
+			const body = id ? { ...formData, _id: id } : formData;
+			const res = await fetch("/api/rtwsSafetyChecklist/save", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(body),
+			});
+			const data = await res.json();
+			if (data.success !== false) {
+				alert("Safety Checklist Records Saved Successfully!");
+				if (!id && data._id) {
+					navigate(`/rtwsSafetyChecklist/${data._id}`);
+				}
+			} else {
+				setError(data.message);
+			}
+		} catch (err) {
+			setError("Failed to establish server communication channels");
+		} finally {
+			setLoading(false);
+		}
+	};
 
 	const handleChange = (e) => {
-		const { id, type, checked, value } = e.target;
+		const { id, value, type, checked } = e.target;
 		setFormData({
 			...formData,
 			[id]: type === "checkbox" ? checked : value,
 		});
 	};
 
-	// --- DYNAMIC COMPARTMENT SECTIONS LOGIC ---
-	const handleCompartmentChange = (index, e) => {
-		const newCompartments = [...formData.compartments];
-		newCompartments[index][e.target.name] = e.target.value;
-		setFormData({ ...formData, compartments: newCompartments });
-	};
-
-	const addCompartment = () => {
+	const handleAddCompartmentRow = () => {
 		setFormData({
 			...formData,
-			compartments: [...formData.compartments, { compartmentNumber: "" }],
+			compartmentCapacities: [...formData.compartmentCapacities, ""],
 		});
 	};
 
-	const removeCompartment = (index) => {
-		if (formData.compartments.length > 1) {
-			const newCompartments = formData.compartments.filter(
-				(_, i) => i !== index,
-			);
-			setFormData({ ...formData, compartments: newCompartments });
-		}
+	const handleCompartmentItemChange = (index, value) => {
+		const updatedList = [...formData.compartmentCapacities];
+		updatedList[index] = value;
+		setFormData({ ...formData, compartmentCapacities: updatedList });
 	};
 
-	useEffect(() => {
-		const fetchStatus = async () => {
-			if (!id) return;
-			try {
-				const res = await fetch(`/api/rtwsSafetyChecklist/get/${id}`);
-				const data = await res.json();
-
-				if (data.success === false) {
-					console.error(data.message);
-					return;
-				}
-
-				const formattedData = {
-					...data,
-					dateOfInspection: data.dateOfInspection
-						? new Date(data.dateOfInspection).toISOString().split("T")[0]
-						: "",
-				};
-
-				setFormData(formattedData);
-			} catch (error) {
-				console.error("Fetch Data Execution Trace Failed:", error);
-			}
-		};
-		fetchStatus();
-	}, [id]);
-
-	const handleSave = async (e) => {
-		e.preventDefault();
-		if (!currentUser)
-			return alert("You must be logged in to save official reports!");
-		setLoading(true);
-		try {
-			const res = await fetch("/api/rtwsSafetyChecklist/save", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					...formData,
-					userRef: currentUser._id,
-					...(id && { _id: id }),
-				}),
+	const handleRemoveCompartmentRow = (index) => {
+		if (formData.compartmentCapacities.length > 1) {
+			setFormData({
+				...formData,
+				compartmentCapacities: formData.compartmentCapacities.filter(
+					(_, i) => i !== index,
+				),
 			});
-			const data = await res.json();
-
-			if (data.success !== false) {
-				alert("RTWS Safety Checklist Document Saved Successfully!");
-				if (!id && data._id) {
-					navigate(`/rtwsSafetyChecklist/${data._id}`);
-				}
-			} else {
-				alert(data.message || "Failed to finalize database tracking.");
-			}
-		} catch (err) {
-			console.error("Save Execution Error Trace:", err);
-		} finally {
-			setLoading(false);
 		}
 	};
+
+	const inputStyle =
+		"w-full bg-[#f8f6f6] p-2 border-b border-black outline-none transition-all hover:shadow-[inset_0_2px_5px_rgba(0,0,0,0.19)] focus:border focus:shadow-[2px_2px_rgba(0,0,0,0.19)] text-xs font-serif font-medium";
+	// FIXED: Stripped box shadows and solid enclosing side borders to align style accurately
+	const borderlessInputStyle =
+		"w-full bg-[#f8f6f6] p-2 border-none outline-none text-xs font-serif font-medium transition-all focus:border focus:border-black focus:shadow-[2px_2px_rgba(0,0,0,0.19)]";
+	const readOnlyStyle =
+		"w-full bg-gray-100 p-2 border-b border-gray-400 outline-none text-xs font-serif font-bold text-blue-800 cursor-not-allowed";
+	const labelStyle =
+		"block text-[11px] pl-1 mb-1 text-gray-700 font-bold tracking-wide uppercase font-serif";
+	const checkboxContainerStyle =
+		"flex items-center gap-3 p-1.5 hover:bg-gray-50 border-b border-gray-100";
+
+	const checklistQuestions = [
+		{
+			id: "hasNoPreviousLeaks",
+			text: "1. Did the truck show any signs of leakage from previous assignment?",
+		},
+		{
+			id: "hasSeatBeltsFitted",
+			text: "2. Is the truck fitted with seat belts both for driver and passenger?",
+		},
+		{
+			id: "areSeatBeltsMaintained",
+			text: "3. Are the seat belts in the truck well maintained?",
+		},
+		{
+			id: "hasSpeedGovernorCertificate",
+			text: "4. Is the truck fitted with speed governors and original certificate displayed?",
+		},
+		{
+			id: "hasFireExtinguisher",
+			text: "5. Is the vehicle fitted with fire extinguisher?",
+		},
+		{
+			id: "hasSafetyToolsAndSpareWheel",
+			text: "6. Was the vehicle fitted with a spare wheel, jack, wheel spanners and life savers?",
+		},
+		{
+			id: "hasStoppersFitted",
+			text: "7. Was the vehicle fitted with stoppers at the time of inspection?",
+		},
+		{
+			id: "areTiresFreeFromWear",
+			text: "8. Were vehicle tires free from bulges and no excessive wear?",
+		},
+		{
+			id: "wasRiskAssessmentCarriedOut",
+			text: "9. Was risk assessment carried out by our inspector prior to inspection?",
+		},
+		{
+			id: "wereAllDocumentsChecked",
+			text: "10. Were all documents presented by driver or client checked?",
+		},
+		{
+			id: "wereCapsAndValvesRemoved",
+			text: "11. Did the driver remove dust caps and manifold valves prior to inspection?",
+		},
+		{
+			id: "areCompartmentsCleanDryOdorFree",
+			text: "12. Were all compartments inspected and found clean, dry and odour free?",
+		},
+		{
+			id: "areTopSurfacesCleanAndSafe",
+			text: "13. Were surfaces on top of the RTW, around the manifold found clean, dry and safe?",
+		},
+		{
+			id: "wereUndersideHatchesInspected",
+			text: "14. Were the underside of hatches and sealing gaskets on top the RTW inspected?",
+		},
+		{
+			id: "werePersonalProtectiveEquipmentUsed",
+			text: "15. Were PPE used and extreme care taken while entering and exiting compartment?",
+		},
+		{
+			id: "wasRagTestPerformed",
+			text: "16. Were internal surfaces inspected and randomly tested with a light colored rag?",
+		},
+		{
+			id: "areInternalSurfacesCleanDryOdorFree",
+			text: "17. Were all internal surfaces confirmed to be clean, dry and odor free?",
+		},
+		{
+			id: "wereCoamingAreasInspected",
+			text: "18. Were coaming areas around the man-hole inside the tanker carefully inspected?",
+		},
+		{
+			id: "wasCertificateStatusCompleted",
+			text: "19. Was TIC completed, clearly indicating whether it was accepted or rejected?",
+		},
+		{
+			id: "wereRejectionReasonsStipulated",
+			text: "20. Were reasons for rejection clearly stipulated on the certificate?",
+		},
+		{
+			id: "wasCertificateDulyFilled",
+			text: "21. Was TIC duly filled with relevant information?",
+		},
+		{
+			id: "wasCertificateCopyRetained",
+			text: "22. Was original TIC given to the driver and a copy retained for internal use?",
+		},
+		{
+			id: "wasSamePreviousCargoConfirmed",
+			text: "23. Were documents for RTWS loading same products as previous checked to confirm whether or not the previous cargo was exactly the same?",
+		},
+		{
+			id: "wasForeignProductAbsenceVerified",
+			text: "24. Were interior surfaces, manifolds and valves of RTWS loading the same products and previous inspected to confirm no presence of foreign products?",
+		},
+		{
+			id: "wasSecondOpinionSought",
+			text: "25. Was second opinion sought before passing the tank?",
+		},
+		{
+			id: "wereDipsticksVerifiedAtInspection",
+			text: "26. Were all dipsticks verified against TT marks and were markings on the dipsticks confirmed to be corresponding with the trailer / wagon number during inspection?",
+		},
+		{
+			id: "wereDipsticksVerifiedAtGantry",
+			text: "27. Were all dipsticks verified against TT marks and were markings on the dipsticks confirmed to be corresponding with the trailer / wagon number before loading at the loading gantry?",
+		},
+	];
 
 	return (
-		<main className="p-4 max-w-7xl mx-auto font-serif">
-			<h1 className="text-2xl font-bold text-center mb-6 uppercase tracking-widest border-b-2 border-black pb-2">
-				RTWS Safety Checklist
-			</h1>
+		<main className="p-4 max-w-7xl mx-auto font-serif bg-white text-gray-900">
+			<header className="mb-4 border-b-2 border-black pb-2">
+				<h1 className="text-base font-bold text-center uppercase tracking-widest">
+					RTWS SAFETY CHECKLIST
+				</h1>
+			</header>
 
-			<form onSubmit={handleSave} className="flex flex-col lg:flex-row gap-8">
-				{/* LEFT BLOCK: Logistics and Compartments */}
-				<div className="flex-1 border-b-2 lg:border-b-0 lg:border-r-2 border-gray-200 pr-0 lg:pr-8 space-y-6">
-					<div className="bg-gray-50 p-3 rounded border border-gray-200 grid grid-cols-2 gap-4">
-						<div className="col-span-2">
-							<label className="text-xs font-bold uppercase text-gray-500">
-								Intertek Inspector
-							</label>
-							<input
-								type="text"
-								id="intertekInspectorName"
-								onChange={handleChange}
-								value={formData.intertekInspectorName}
-								placeholder="Inspector Full Name"
-								className="w-full border-b border-black bg-transparent outline-none p-1 text-sm font-semibold"
-								required
-							/>
+			<form onSubmit={handleSubmit} className="flex flex-col gap-8">
+				{/* Side-by-Side Split Flex Grid Structural Layout Box */}
+				<div className="flex flex-col lg:flex-row gap-10">
+					{/* LEFT HALF: Document Logistics Framing & Dynamic Compartments Matrix */}
+					<div className="flex-1 flex flex-col gap-5">
+						<div className="bg-gray-100 p-2 border-l-4 border-black">
+							<h2 className="text-xs font-bold uppercase tracking-wider">
+								Logistics & Survey Profiles
+							</h2>
 						</div>
-						<div>
-							<label className="text-xs font-bold uppercase text-gray-500">
-								Time of Inspection
-							</label>
-							<input
-								type="time"
-								id="timeOfInspection"
-								onChange={handleChange}
-								value={formData.timeOfInspection}
-								className="w-full border-b border-black bg-transparent outline-none p-1 text-sm"
-								required
-							/>
-						</div>
-						<div>
-							<label className="text-xs font-bold uppercase text-gray-500">
-								Date of Inspection
-							</label>
-							<input
-								type="date"
-								id="dateOfInspection"
-								onChange={handleChange}
-								value={formData.dateOfInspection}
-								className="w-full border-b border-black bg-transparent outline-none p-1 text-sm"
-								required
-							/>
-						</div>
-					</div>
 
-					<div className="grid grid-cols-2 gap-4">
-						<div>
-							<label className="text-xs font-bold uppercase text-gray-500">
-								Place of Inspection
-							</label>
-							<input
-								type="text"
-								id="placeOfInspection"
-								onChange={handleChange}
-								value={formData.placeOfInspection}
-								placeholder="Place of Inspection"
-								className="w-full border-b border-black outline-none p-1 text-sm"
-								required
-							/>
-						</div>
-						<div>
-							<label className="text-xs font-bold uppercase text-gray-500">
-								Client
-							</label>
-							<input
-								type="text"
-								id="client"
-								onChange={handleChange}
-								value={formData.client}
-								placeholder="Client Name"
-								className="w-full border-b border-black outline-none p-1 text-sm"
-								required
-							/>
-						</div>
-						<div>
-							<label className="text-xs font-bold uppercase text-gray-500">
-								Truck Number
-							</label>
-							<input
-								type="text"
-								id="truckNumber"
-								onChange={handleChange}
-								value={formData.truckNumber}
-								placeholder="Truck Number"
-								className="w-full border-b border-black outline-none p-1 text-sm"
-								required
-							/>
-						</div>
-						<div>
-							<label className="text-xs font-bold uppercase text-gray-500">
-								Transporter
-							</label>
-							<input
-								type="text"
-								id="transporter"
-								onChange={handleChange}
-								value={formData.transporter}
-								placeholder="Transporter"
-								className="w-full border-b border-black outline-none p-1 text-sm"
-								required
-							/>
-						</div>
-						<div>
-							<label className="text-xs font-bold uppercase text-gray-500">
-								Driver's Name
-							</label>
-							<input
-								type="text"
-								id="driversName"
-								onChange={handleChange}
-								value={formData.driversName}
-								placeholder="Driver's Name"
-								className="w-full border-b border-black outline-none p-1 text-sm"
-								required
-							/>
-						</div>
-						<div>
-							<label className="text-xs font-bold uppercase text-gray-500">
-								Previous Cargo
-							</label>
-							<input
-								type="text"
-								id="previousCargo"
-								onChange={handleChange}
-								value={formData.previousCargo}
-								placeholder="Previous Cargo"
-								className="w-full border-b border-black outline-none p-1 text-sm"
-								required
-							/>
-						</div>
-						<div>
-							<label className="text-xs font-bold uppercase text-gray-500">
-								Driver's ID
-							</label>
-							<input
-								type="text"
-								id="driversId"
-								onChange={handleChange}
-								value={formData.driversId}
-								placeholder="Driver's ID"
-								className="w-full border-b border-black outline-none p-1 text-sm"
-								required
-							/>
-						</div>
-						<div>
-							<label className="text-xs font-bold uppercase text-gray-500">
-								To Load
-							</label>
-							<input
-								type="text"
-								id="toLoad"
-								onChange={handleChange}
-								value={formData.toLoad}
-								placeholder="To Load Product"
-								className="w-full border-b border-black outline-none p-1 text-sm"
-								required
-							/>
-						</div>
-					</div>
-
-					{/* DYNAMIC COMPARTMENT GRID ITERATION BLOCK */}
-					<div className="flex justify-between items-center bg-black text-white p-1 mt-6">
-						<h2 className="text-sm font-bold uppercase tracking-wider">
-							Vehicle Tank Compartments
-						</h2>
-						<button
-							type="button"
-							onClick={addCompartment}
-							className="text-[10px] bg-blue-600 text-white px-2 py-0.5 rounded hover:bg-blue-700 font-bold uppercase"
-						>
-							+ Add Compartment
-						</button>
-					</div>
-
-					<div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-						{formData.compartments.map((comp, index) => (
-							<div
-								key={index}
-								className="p-2 bg-gray-50 rounded border border-gray-200 flex items-center justify-between gap-2"
-							>
-								<div className="flex-1">
-									<label className="text-[9px] font-bold text-gray-400 uppercase block">
-										Compartment #{index + 1}
-									</label>
-									<input
-										type="number"
-										name="compartmentNumber"
-										placeholder="Capacity/ID"
-										value={comp.compartmentNumber || ""}
-										onChange={(e) => handleCompartmentChange(index, e)}
-										className="w-full border-b border-gray-400 bg-transparent outline-none p-0.5 text-xs font-bold"
-										required
-									/>
-								</div>
-								{formData.compartments.length > 1 && (
-									<button
-										type="button"
-										onClick={() => removeCompartment(index)}
-										className="text-red-500 font-bold hover:text-red-700 text-lg mt-3"
-									>
-										&times;
-									</button>
-								)}
+						<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+							<div className="md:col-span-2">
+								<label className={labelStyle}>Intertek Inspector</label>
+								<input
+									onChange={handleChange}
+									id="intertekInspector"
+									className={inputStyle}
+									type="text"
+									required
+									value={formData.intertekInspector || ""}
+								/>
 							</div>
-						))}
+							<div>
+								<label className={labelStyle}>Time of Inspection</label>
+								<input
+									onChange={handleChange}
+									id="timeOfInspection"
+									className={inputStyle}
+									type="time"
+									required
+									value={formData.timeOfInspection || ""}
+								/>
+							</div>
+							<div>
+								<label className={labelStyle}>Date of Inspection</label>
+								<input
+									onChange={handleChange}
+									id="dateOfInspection"
+									className={inputStyle}
+									type="date"
+									required
+									value={formData.dateOfInspection || ""}
+								/>
+							</div>
+							<div>
+								<label className={labelStyle}>Place of Inspection</label>
+								<input
+									onChange={handleChange}
+									id="placeOfInspection"
+									className={inputStyle}
+									type="text"
+									required
+									value={formData.placeOfInspection || ""}
+								/>
+							</div>
+							<div>
+								<label className={labelStyle}>Client</label>
+								<input
+									onChange={handleChange}
+									id="clientName"
+									className={inputStyle}
+									type="text"
+									required
+									value={formData.clientName || ""}
+								/>
+							</div>
+						</div>
+
+						<div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-gray-100 pt-3">
+							<div>
+								<label className={labelStyle}>Truck Number</label>
+								<input
+									onChange={handleChange}
+									id="truckNumber"
+									className={inputStyle}
+									type="text"
+									required
+									value={formData.truckNumber || ""}
+								/>
+							</div>
+							<div>
+								<label className={labelStyle}>Transporter</label>
+								<input
+									onChange={handleChange}
+									id="transporterCompany"
+									className={inputStyle}
+									type="text"
+									required
+									value={formData.transporterCompany || ""}
+								/>
+							</div>
+							<div>
+								<label className={labelStyle}>Driver's Name</label>
+								<input
+									onChange={handleChange}
+									id="driversName"
+									className={inputStyle}
+									type="text"
+									required
+									value={formData.driversName || ""}
+								/>
+							</div>
+							<div>
+								<label className={labelStyle}>Previous Cargo</label>
+								<input
+									onChange={handleChange}
+									id="previousCargo"
+									className={inputStyle}
+									type="text"
+									required
+									value={formData.previousCargo || ""}
+								/>
+							</div>
+							<div>
+								<label className={labelStyle}>Driver's ID Identification</label>
+								<input
+									onChange={handleChange}
+									id="driversIdentification"
+									className={inputStyle}
+									type="text"
+									required
+									value={formData.driversIdentification || ""}
+								/>
+							</div>
+							<div>
+								<label className={labelStyle}>To Load Cargo</label>
+								<input
+									onChange={handleChange}
+									id="cargoToLoad"
+									className={inputStyle}
+									type="text"
+									required
+									value={formData.cargoToLoad || ""}
+								/>
+							</div>
+						</div>
+
+						{/* Dynamic Interactive Compartment Layout Matrix Tracker */}
+						<div className="flex flex-col gap-3 border-t border-gray-100 pt-4">
+							<div className="flex justify-between items-center bg-gray-50 p-2 border-l-4 border-blue-800">
+								<h3 className="text-xs font-bold uppercase tracking-wider">
+									Trailer Tank Compartments
+								</h3>
+								<button
+									type="button"
+									onClick={handleAddCompartmentRow}
+									className="text-[10px] bg-black text-white px-2 py-0.5 rounded font-bold uppercase hover:bg-gray-800"
+								>
+									+ Add Compartment
+								</button>
+							</div>
+
+							<div className="grid grid-cols-2 gap-2 max-h-[180px] overflow-y-auto pr-1">
+								{formData.compartmentCapacities.map((capacity, index) => (
+									<div
+										key={index}
+										className="flex items-center gap-2 bg-gray-50 p-1 border border-b border-gray-200 rounded"
+									>
+										<div className="flex-1">
+											{/* FIXED: Removed outer border envelope around inputs via borderless styles attribute mapping */}
+											<input
+												value={capacity}
+												onChange={(e) =>
+													handleCompartmentItemChange(index, e.target.value)
+												}
+												className={borderlessInputStyle}
+												placeholder={`Compartment #${index + 1} Vol (Ltrs)`}
+												type="number"
+												required
+											/>
+										</div>
+										{formData.compartmentCapacities.length > 1 && (
+											<button
+												type="button"
+												onClick={() => handleRemoveCompartmentRow(index)}
+												className="text-red-500 hover:bg-red-50 font-bold px-2 text-xs"
+											>
+												X
+											</button>
+										)}
+									</div>
+								))}
+							</div>
+						</div>
+
+						{/* MOVED & INTEGRATED REAL-TIME AUTOMATIC TOTAL CALCULATIONS SECTION */}
+						<div className="bg-gray-100 p-2 border-l-4 border-blue-800 mt-2">
+							<h2 className="text-xs font-bold uppercase tracking-wider">
+								Automated Capacity Accumulation Dashboard
+							</h2>
+						</div>
+						<div className="bg-gray-50 p-4 border border-gray-200 rounded shadow-sm">
+							<label className={labelStyle}>
+								Grand Total Compartments Capacity (Litres Auto)
+							</label>
+							<input
+								id="totalCompartmentCapacity"
+								className={readOnlyStyle}
+								type="number"
+								readOnly
+								value={formData.totalCompartmentCapacity}
+							/>
+						</div>
 					</div>
 
-					{/* READ-ONLY TOTAL CAPACITY SECTION */}
-					<div className="p-3 bg-gray-100 border border-gray-300 rounded mt-4">
-						<label className="text-xs font-bold uppercase text-gray-700 block mb-1">
-							Calculated Total Capacity (Auto-Updating)
-						</label>
-						<input
-							type="text"
-							id="totalCapacity"
-							value={formData.totalCapacity}
-							readOnly
-							placeholder="0"
-							className="w-full bg-white border border-gray-400 font-extrabold outline-none p-2 text-base text-black cursor-not-allowed rounded shadow-inner"
-						/>
+					{/* RIGHT HALF: Complete Safety Survey Auditing Form Questionnaire Grid Sheet */}
+					<div className="flex-1 flex flex-col gap-4 border-t lg:border-t-0 lg:border-l-2 border-gray-200 lg:pl-10 pt-6 lg:pt-0">
+						<div className="bg-gray-100 p-2 border-l-4 border-black">
+							<h2 className="text-xs font-bold uppercase tracking-wider">
+								Safety Checklist Questionnaire Verification
+							</h2>
+						</div>
+
+						<div className="flex flex-col gap-0.5 max-h-[580px] overflow-y-auto pr-1 border border-gray-100 p-2 rounded bg-gray-50/50 shadow-inner">
+							{checklistQuestions.map((question) => (
+								<div key={question.id} className={checkboxContainerStyle}>
+									<input
+										onChange={handleChange}
+										type="checkbox"
+										id={question.id}
+										className="w-4 h-4 cursor-pointer accent-black shrink-0"
+										checked={formData[question.id]}
+									/>
+									<label
+										htmlFor={question.id}
+										className="text-[11px] cursor-pointer font-medium font-serif leading-tight text-gray-800 select-none"
+									>
+										{question.text}
+									</label>
+								</div>
+							))}
+						</div>
+
+						{/* Document Legal Operational Structural Keys Metadata Footer Info */}
+						<div className="p-3 bg-gray-100 text-[10px] text-gray-600 font-serif leading-relaxed uppercase border rounded">
+							<p className="indent-0 font-semibold text-black mb-1">
+								Ecosystem Abbreviations Key Reference:
+							</p>
+							<p className="indent-0">
+								TIC : Tank Inspection Certificate | RTW : Road Tank Wagon
+							</p>
+							<p className="indent-0 border-t pt-1.5 mt-1.5 text-[9px] text-gray-500 font-sans tracking-tight">
+								AUTHOR: QMR | APPROVED BY: GENERAL MANAGER | DOC. REF: IMSR, 08
+								/ Veg26
+							</p>
+						</div>
 					</div>
 				</div>
 
-				{/* RIGHT BLOCK: The 27 Auditing Checkboxes and Signatures */}
-				<div className="flex-1 lg:pl-8 flex flex-col justify-between space-y-6">
-					<div className="space-y-3">
-						<h2 className="text-sm font-bold bg-black text-white p-1 uppercase tracking-wider">
-							Safety Checklist Metrics Evaluation
-						</h2>
-
-						<div className="max-h-[500px] overflow-y-auto pr-2 border p-2 bg-gray-50 rounded space-y-2 text-xs">
-							{[
-								"1. Did the truck show any signs of leakage from previous assignment?",
-								"2. Is the truck fitted with seat belts both for driver and passenger?",
-								"3. Are the seat belts in the truck well maintained?",
-								"4. Is the truck fitted with speed governors and original certificate displayed?",
-								"5. Is the vehicle fitted with fire extinguisher?",
-								"6. Was the vehicle fitted with a spare wheel, jack, wheel spanners and life savers?",
-								"7. Was the vehicle fitted with stoppers at the time of inspection?",
-								"8. Were vehicle tires free from bulges and no excessive wear?",
-								"9. Was risk assessment carried out by our inspector prior to inspection?",
-								"10. Were all documents presented by driver or client checked?",
-								"11. Did the driver remove dust caps and manifold valves prior to inspection?",
-								"12. Were all compartments inspected and found clean, dry and odour free?",
-								"13. Were surfaces on top of the RTW, around the manifold found clean, dry and safe?",
-								"14. Were the underside of hatches and sealing gaskets on top the RTW inspected?",
-								"15. Were PPE used and extreme care taken while entering and exiting compartment?",
-								"16. Were internal surfaces inspected and randomly tested with a light colored rag?",
-								"17. Were all internal surfaces confirmed to be clean, dry and odor free?",
-								"18. Were coaming areas around the man-hole inside the tanker carefully inspected?",
-								"19. Was TIC completed, clearly indicating whether it was accepted or rejected?",
-								"20. Were reasons for rejection clearly stipulated on the certificate?",
-								"21. Was TIC duly filled with relevant information?",
-								"22. Was original TIC given to the driver and a copy retained for internal use?",
-								"23. Were documents for RTWS loading same products as previous checked to confirm whether or not the previous cargo was exactly the same?",
-								"24. Were interior surfaces, manifolds and valves of RTWS loading the same products and previous inspected to confirm no presence of foreign products?",
-								"25. Was second opinion sought before pass the tank?",
-								"26. Were all dipstick verified against TT marks and were markings on the dipsticks confirmed to the corresponding with the trailer / wagon number during inspection?",
-								"27. Were all dipsticks verified against TT marks and were markings on the dipsticks confirmed to be corresponding with the trailer / wagon number before loading at the loading gantry?",
-							].map((statement, idx) => {
-								const currentKey = `checkItem${idx + 1}`;
-								return (
-									<label
-										key={idx}
-										className="flex items-start gap-3 p-1.5 border-b border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors"
-									>
-										<input
-											type="checkbox"
-											id={currentKey}
-											checked={formData[currentKey] || false}
-											onChange={handleChange}
-											className="w-4 h-4 mt-0.5 accent-black flex-shrink-0"
-										/>
-										<span className="leading-tight text-gray-800">
-											{statement}
-										</span>
-									</label>
-								);
-							})}
-						</div>
-
-						<div className="p-2 bg-yellow-50 text-[10px] text-gray-600 border border-yellow-200 font-sans mt-2 rounded">
-							<strong>KEY:</strong> TIC : Tank inspection certificate | RTW :
-							Road Tank Wagon
-						</div>
-					</div>
-
+				{/* Submission Action */}
+				<footer className="mt-4 border-t pt-6 bg-transparent">
 					<button
 						type="submit"
 						disabled={loading}
-						className="w-full bg-black text-white py-3 rounded font-bold hover:bg-gray-800 transition-all uppercase tracking-widest"
+						className="w-full bg-black text-white p-4 font-bold uppercase hover:bg-gray-800 disabled:opacity-50 transition-all shadow-md tracking-widest text-xs font-serif"
 					>
 						{loading
-							? "Processing Document Storage..."
-							: "Save RTWS Safety Checklist"}
+							? "Processing Document Data Check..."
+							: "Submit RTWS Safety Checklist"}
 					</button>
-
-					<div className="text-[9px] uppercase tracking-wider text-center text-gray-400 font-sans border-t pt-2">
-						AUTHOR : QMR | APPROVED BY : GENERAL MANAGER | DOC . REF IMSR , 08 /
-						Veg26
-					</div>
-				</div>
+					{error && (
+						<p className="text-red-600 text-center mt-4 text-xs font-bold uppercase tracking-wider font-serif">
+							{error}
+						</p>
+					)}
+				</footer>
 			</form>
 		</main>
 	);

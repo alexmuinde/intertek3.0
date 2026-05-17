@@ -1,57 +1,62 @@
 const EndOfPipelineSampleReport = require("../models/endOfPipelineSampleReportModel.js");
-const factory = require("./handlerFactory.js");
+const handlerFactory = require("./handlerFactory.js");
 
-// 1. Core creation and updates logic mapping via handlerFactory pattern
-exports.saveEndOfPipelineSampleReport = factory.saveDocument(
+// Save or Update a report using the centralized factory framework blueprint
+exports.saveEndOfPipelineSampleReport = handlerFactory.saveDocument(
 	EndOfPipelineSampleReport,
 );
 
-// 2. Fetch dataset filtered under active inspector id criteria
-exports.getAllEndOfPipelineSampleReports = async (req, res, next) => {
+// Retrieve all reports created by the currently logged-in user session
+exports.getAllEndOfPipelineSampleReports = async (request, response, next) => {
 	try {
+		const userId = request.user.id;
 		const documents = await EndOfPipelineSampleReport.find({
-			userRef: req.user.id,
-		}).sort({ updatedAt: -1 });
-
-		res.status(200).json(documents);
+			userReference: userId,
+		}).sort({
+			updatedAt: -1,
+		});
+		response.status(200).json(documents);
 	} catch (error) {
 		next(error);
 	}
 };
 
-// 3. Isolated record verification processing security loops
-exports.getEndOfPipelineSampleReport = async (req, res, next) => {
+// Retrieve a single specific report by ID with secure account reference validation
+exports.getEndOfPipelineSampleReport = async (request, response, next) => {
 	try {
-		const document = await EndOfPipelineSampleReport.findById(req.params.id);
+		const documentId = request.params.id;
+		const report = await EndOfPipelineSampleReport.findById(documentId);
 
-		if (!document) {
-			return res
+		if (!report) {
+			return response
 				.status(404)
-				.json({ success: false, message: "End of pipeline report not found." });
+				.json({ success: false, message: "Report not found" });
 		}
 
-		// Validation check matching SealingReport exactly
-		if (document.userRef.toString() !== req.user.id) {
-			return res.status(403).json({
-				success: false,
-				message: "Resource permission scope mapping restriction.",
-			});
+		if (report.userReference.toString() !== request.user.id) {
+			return response
+				.status(403)
+				.json({ success: false, message: "Unauthorized access restriction" });
 		}
 
-		res.status(200).json(document);
+		response.status(200).json(report);
 	} catch (error) {
 		next(error);
 	}
 };
 
-// 4. Shared administration layout pipeline feed aggregator
-exports.getEveryonesEndOfPipelineSampleReports = async (req, res, next) => {
+// Public/Admin endpoint to fetch every pipeline sample log entry inside the platform database
+exports.getEveryonesEndOfPipelineSampleReports = async (
+	request,
+	response,
+	next,
+) => {
 	try {
 		const documents = await EndOfPipelineSampleReport.find()
-			.populate("userRef", "username avatar")
+			.populate("userReference", "username avatar")
 			.sort({ updatedAt: -1 });
 
-		res.status(200).json(documents);
+		response.status(200).json(documents);
 	} catch (error) {
 		next(error);
 	}

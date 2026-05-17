@@ -1,58 +1,62 @@
 const PipelineInspectionReport = require("../models/pipelineInspectionReportModel.js");
-const factory = require("./handlerFactory.js");
+const handlerFactory = require("./handlerFactory.js");
 
-// 1. Unified Save & Update utilizing your custom master handlerFactory logic block
-exports.savePipelineInspectionReport = factory.saveDocument(
+// Save or Update a pipeline document using the centralized factory framework blueprint
+exports.savePipelineInspectionReport = handlerFactory.saveDocument(
 	PipelineInspectionReport,
 );
 
-// 2. Fetch all entries filtered precisely by the active session inspector ID
-exports.getAllPipelineInspectionReports = async (req, res, next) => {
+// Retrieve all reports created by the currently logged-in user session
+exports.getAllPipelineInspectionReports = async (request, response, next) => {
 	try {
+		const userId = request.user.id;
 		const documents = await PipelineInspectionReport.find({
-			userRef: req.user.id,
-		}).sort({ updatedAt: -1 });
-
-		res.status(200).json(documents);
+			userReference: userId,
+		}).sort({
+			updatedAt: -1,
+		});
+		response.status(200).json(documents);
 	} catch (error) {
 		next(error);
 	}
 };
 
-// 3. Specific item extractor processing identity access checking loops
-exports.getPipelineInspectionReport = async (req, res, next) => {
+// Retrieve a single specific report by ID with secure account validation
+exports.getPipelineInspectionReport = async (request, response, next) => {
 	try {
-		const document = await PipelineInspectionReport.findById(req.params.id);
+		const documentId = request.params.id;
+		const report = await PipelineInspectionReport.findById(documentId);
 
-		if (!document) {
-			return res.status(404).json({
-				success: false,
-				message: "Pipeline report instance data not found.",
-			});
+		if (!report) {
+			return response
+				.status(404)
+				.json({ success: false, message: "Report not found" });
 		}
 
-		// Security constraint validation exactly matching SealingReport logic loops
-		if (document.userRef.toString() !== req.user.id) {
-			return res.status(403).json({
-				success: false,
-				message: "Unauthorized access vector restriction.",
-			});
+		if (report.userReference.toString() !== request.user.id) {
+			return response
+				.status(403)
+				.json({ success: false, message: "Unauthorized access restriction" });
 		}
 
-		res.status(200).json(document);
+		response.status(200).json(report);
 	} catch (error) {
 		next(error);
 	}
 };
 
-// 4. Global system query stream aggregator feed for administration panels
-exports.getEveryonesPipelineInspectionReports = async (req, res, next) => {
+// Public/Admin endpoint to fetch every pipeline log entry inside the system database
+exports.getEveryonesPipelineInspectionReports = async (
+	request,
+	response,
+	next,
+) => {
 	try {
 		const documents = await PipelineInspectionReport.find()
-			.populate("userRef", "username avatar")
+			.populate("userReference", "username avatar")
 			.sort({ updatedAt: -1 });
 
-		res.status(200).json(documents);
+		response.status(200).json(documents);
 	} catch (error) {
 		next(error);
 	}

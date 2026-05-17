@@ -1,56 +1,66 @@
 const ReceiptOfSealedSamples = require("../models/receiptOfSealedSamplesModel.js");
-const factory = require("./handlerFactory.js");
+const handlerFactory = require("./handlerFactory.js");
 
-// 1. Save or Update using master global factory pattern tracking structures
-exports.saveReceiptOfSealedSamples = factory.saveDocument(
+// Save or Update a report using the centralized factory framework blueprint
+exports.saveReceiptOfSealedSamplesReport = handlerFactory.saveDocument(
 	ReceiptOfSealedSamples,
 );
 
-// 2. Fetch dataset filtered cleanly under active logged-in user context
-exports.getAllReceiptOfSealedSamples = async (req, res, next) => {
+// Retrieve all reports created by the currently logged-in user session
+exports.getAllReceiptOfSealedSamplesReports = async (
+	request,
+	response,
+	next,
+) => {
 	try {
+		const userId = request.user.id;
 		const documents = await ReceiptOfSealedSamples.find({
-			userRef: req.user.id,
-		}).sort({ updatedAt: -1 });
-
-		res.status(200).json(documents);
+			userReference: userId,
+		}).sort({
+			updatedAt: -1,
+		});
+		response.status(200).json(documents);
 	} catch (error) {
 		next(error);
 	}
 };
 
-// 3. Singular data component trace route validating ownership parameters
-exports.getReceiptOfSealedSamples = async (req, res, next) => {
+// Retrieve a single specific report by ID with secure user verification checks
+exports.getReceiptOfSealedSamplesReport = async (request, response, next) => {
 	try {
-		const document = await ReceiptOfSealedSamples.findById(req.params.id);
+		const documentId = request.params.id;
+		const report = await ReceiptOfSealedSamples.findById(documentId);
 
-		if (!document) {
-			return res
+		if (!report) {
+			return response
 				.status(404)
-				.json({ success: false, message: "Sample receipt record not found." });
+				.json({ success: false, message: "Report not found" });
 		}
 
-		if (document.userRef.toString() !== req.user.id) {
-			return res.status(403).json({
-				success: false,
-				message: "Unauthorized token resource validation failure.",
-			});
+		if (report.userReference.toString() !== request.user.id) {
+			return response
+				.status(403)
+				.json({ success: false, message: "Unauthorized access restriction" });
 		}
 
-		res.status(200).json(document);
+		response.status(200).json(report);
 	} catch (error) {
 		next(error);
 	}
 };
 
-// 4. Global admin dashboard pipeline data aggregator view feed
-exports.getEveryonesReceiptOfSealedSamples = async (req, res, next) => {
+// Public/Admin endpoint to fetch every sample log entry inside the system database
+exports.getEveryonesReceiptOfSealedSamplesReports = async (
+	request,
+	response,
+	next,
+) => {
 	try {
 		const documents = await ReceiptOfSealedSamples.find()
-			.populate("userRef", "username avatar")
+			.populate("userReference", "username avatar")
 			.sort({ updatedAt: -1 });
 
-		res.status(200).json(documents);
+		response.status(200).json(documents);
 	} catch (error) {
 		next(error);
 	}

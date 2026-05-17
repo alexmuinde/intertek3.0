@@ -1,37 +1,40 @@
 const mongoose = require("mongoose");
 
+// Grouped sub-schema for witness verification details
+const representativeSchema = new mongoose.Schema({
+	representativeName: { type: String, required: true },
+	representativeIdentification: { type: String, required: true },
+	representativeEmail: { type: String, required: true },
+});
+
+// Comprehensive schema for Letter of Protest Shore Final Outturn Figures
 const letterOfProtestShoreFinalOutturnFiguresSchema = new mongoose.Schema(
 	{
-		toAddress: { type: String, required: true },
-		vessel: { type: String, required: true },
-		date: { type: Date, required: true },
-		grade: { type: String, required: true },
-		port: { type: String, required: true },
-
-		// Narrative conditional criteria fields
-		shoreProvisionalProtestDate: { type: Date, required: true },
-
-		// Mathematical quantification parameters
-		billOfLadingFigure: { type: String, required: true },
-		shoreFinalOutturnFigure: { type: String, required: true },
-		difference: { type: String, required: true },
-		percentageDifference: { type: String, required: true },
-
-		intertekInspector: { type: String, required: true },
-
-		representatives: [
-			{
-				name: String,
-				id: String,
-				email: String,
-			},
-		],
-
-		userRef: {
+		userReference: {
 			type: mongoose.Schema.Types.ObjectId,
 			ref: "User",
 			required: true,
 		},
+		// Core Identity Context Parameters
+		recipientName: { type: String, required: true },
+		vesselName: { type: String, required: true },
+		dateOfReport: { type: String, required: true },
+		cargoGrade: { type: String, required: true },
+		portName: { type: String, required: true },
+
+		// Inline Paragraph Parameter
+		dateOfProvisionalProtestReport: { type: String, required: true },
+
+		// Parallel Primitive Dynamic Lists tracking product calculations ("Add More..." entries)
+		billOfLadingFigures: { type: [Number], required: true },
+		shoreFinalOutturnFigures: { type: [Number], required: true },
+		metricTonsDifferences: { type: [Number], required: true },
+		percentageDifferences: { type: [Number], required: true },
+
+		intertekInspector: { type: String, required: true },
+
+		// Grouped repeatable representatives list compiled at the end anchor
+		representatives: { type: [representativeSchema], required: true },
 	},
 	{ timestamps: true },
 );

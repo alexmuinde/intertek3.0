@@ -1,37 +1,28 @@
 const mongoose = require("mongoose");
 
+// Comprehensive schema for Hand Over Report document data sheets
 const handOverReportSchema = new mongoose.Schema(
 	{
-		department: { type: String, required: true },
-		date: { type: Date, required: true },
-		fromStaff: { type: String, required: true },
-		toStaff: { type: String, required: true },
-		staffHandingOver: { type: String, required: true },
-		staffReceivingHandOver: { type: String, required: true },
-
-		// Sub-document array tracking individual responsibility blocks
-		responsibilities: [
-			{
-				responsibilityText: String,
-			},
-		],
-
-		departmentHead: { type: String, required: true },
-		intertekInspector: { type: String, required: true },
-
-		representatives: [
-			{
-				name: String,
-				id: String,
-				email: String,
-			},
-		],
-
-		userRef: {
+		userReference: {
 			type: mongoose.Schema.Types.ObjectId,
 			ref: "User",
 			required: true,
 		},
+		// Core Identity Parameters
+		departmentName: { type: String, required: true },
+		dateOfReport: { type: String, required: true },
+		outgoingStaffName: { type: String, required: true }, // Expanded "From"
+		incomingStaffName: { type: String, required: true }, // Expanded "To"
+
+		// Shift Transition Profiles
+		staffHandingOverSignature: { type: String, required: true },
+		staffReceivingHandOverSignature: { type: String, required: true },
+
+		// REFACTORED: Parallel Dynamic Primitive List for Roles and Actions ("Add More..." entries)
+		assignedResponsibilities: { type: [String], required: true },
+
+		// Sign-off Management Authorization
+		departmentHeadName: { type: String, required: true },
 	},
 	{ timestamps: true },
 );

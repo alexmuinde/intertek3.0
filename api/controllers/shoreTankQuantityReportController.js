@@ -1,40 +1,62 @@
 const ShoreTankQuantityReport = require("../models/shoreTankQuantityReportModel.js");
-const factory = require("./handlerFactory.js");
+const handlerFactory = require("./handlerFactory.js");
 
-exports.saveShoreTankQuantityReport = factory.saveDocument(
+// Save or Update a report using the centralized factory blueprint
+exports.saveShoreTankQuantityReport = handlerFactory.saveDocument(
 	ShoreTankQuantityReport,
 );
 
-exports.getAllShoreTankQuantityReports = async (req, res, next) => {
+// Retrieve all reports created by the currently logged-in user
+exports.getAllShoreTankQuantityReports = async (request, response, next) => {
 	try {
-		const docs = await ShoreTankQuantityReport.find({
-			userRef: req.user.id,
-		}).sort({ updatedAt: -1 });
-		res.status(200).json(docs);
+		const userId = request.user.id;
+		const documents = await ShoreTankQuantityReport.find({
+			userReference: userId,
+		}).sort({
+			updatedAt: -1,
+		});
+		response.status(200).json(documents);
 	} catch (error) {
 		next(error);
 	}
 };
 
-exports.getShoreTankQuantityReport = async (req, res, next) => {
+// Retrieve a single specific report by its database ID with structural security checks
+exports.getShoreTankQuantityReport = async (request, response, next) => {
 	try {
-		const doc = await ShoreTankQuantityReport.findById(req.params.id);
-		if (!doc || doc.userRef !== req.user.id)
-			return res.status(403).json({ success: false, message: "Unauthorized" });
-		res.status(200).json(doc);
+		const documentId = request.params.id;
+		const report = await ShoreTankQuantityReport.findById(documentId);
+
+		if (!report) {
+			return response
+				.status(404)
+				.json({ success: false, message: "Report not found" });
+		}
+
+		if (report.userReference.toString() !== request.user.id) {
+			return response
+				.status(403)
+				.json({ success: false, message: "Unauthorized access restriction" });
+		}
+
+		response.status(200).json(report);
 	} catch (error) {
 		next(error);
 	}
 };
 
-// 4. Public/Admin Fetcher - Shows reports from all users for the Global Dashboard
-exports.getEveryonesShoreTankQuantityReports = async (req, res, next) => {
+// Public/Admin endpoint to fetch every shore tank report in the entire database
+exports.getEveryonesShoreTankQuantityReports = async (
+	request,
+	response,
+	next,
+) => {
 	try {
 		const documents = await ShoreTankQuantityReport.find()
-			.populate("userRef", "username avatar") // Includes creator details
-			.sort({ updatedAt: -1 }); // Newest first
+			.populate("userReference", "username avatar")
+			.sort({ updatedAt: -1 });
 
-		res.status(200).json(documents);
+		response.status(200).json(documents);
 	} catch (error) {
 		next(error);
 	}

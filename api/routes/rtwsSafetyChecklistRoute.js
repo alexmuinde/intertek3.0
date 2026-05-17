@@ -1,17 +1,17 @@
 const express = require("express");
 const {
-	saveRtwsSafetyChecklist,
-	getRtwsSafetyChecklist,
-	getAllRtwsSafetyChecklists,
-	getEveryonesRtwsSafetyChecklists,
+	saveRtwsSafetyChecklistReport,
+	getAllRtwsSafetyChecklistReports,
+	getRtwsSafetyChecklistReport,
+	getEveryonesRtwsSafetyChecklistReports,
 } = require("../controllers/rtwsSafetyChecklistController.js");
 const { verifyToken } = require("../utils/verifyUser.js");
 
 const router = express.Router();
 
-router.post("/save", verifyToken, saveRtwsSafetyChecklist);
-router.get("/getall", verifyToken, getAllRtwsSafetyChecklists);
-router.get("/get/:id", verifyToken, getRtwsSafetyChecklist);
-router.get("/geteveryones", verifyToken, getEveryonesRtwsSafetyChecklists);
+router.post("/save", verifyToken, saveRtwsSafetyChecklistReport);
+router.get("/getall", verifyToken, getAllRtwsSafetyChecklistReports);
+router.get("/get/:id", verifyToken, getRtwsSafetyChecklistReport);
+router.get("/geteveryones", getEveryonesRtwsSafetyChecklistReports);
 
 module.exports = router;

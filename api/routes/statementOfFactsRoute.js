@@ -1,17 +1,22 @@
 const express = require("express");
 const {
-	getAllSOF,
-	saveSOF,
-	getSOF,
-	getEveryonesDocs,
+	saveStatementOfFactsReport,
+	getAllStatementOfFactsReports,
+	getStatementOfFactsReport,
+	getEveryonesStatementOfFactsReports,
 } = require("../controllers/statementOfFactsController.js");
 const { verifyToken } = require("../utils/verifyUser.js");
 
 const router = express.Router();
 
-router.post("/save", verifyToken, saveSOF);
-router.get("/getall", verifyToken, getAllSOF); // This handles the dashboard fetch
-router.get("/get/:id", verifyToken, getSOF);
-router.get("/geteveryones", getEveryonesDocs);
+/**
+ * Statement of Facts Routes
+ * Standardized camelCase pathing matching the ecosystem baseline
+ */
+
+router.post("/save", verifyToken, saveStatementOfFactsReport);
+router.get("/getall", verifyToken, getAllStatementOfFactsReports);
+router.get("/get/:id", verifyToken, getStatementOfFactsReport);
+router.get("/geteveryones", getEveryonesStatementOfFactsReports);
 
 module.exports = router;

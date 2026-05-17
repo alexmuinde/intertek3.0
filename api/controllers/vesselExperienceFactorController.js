@@ -1,58 +1,75 @@
+// Import the database model for Vessel Experience Factor reports
 const VesselExperienceFactor = require("../models/vesselExperienceFactorModel.js");
-const factory = require("./handlerFactory.js");
 
-// 1. Save or Update - Leverages your handlerFactory logic
-exports.saveVesselExperienceFactorReport = factory.saveDocument(
+// Import the centralized factory handler module
+const handlerFactory = require("./handlerFactory.js");
+
+// 1. Save or Update a report using the centralized factory blueprint
+exports.saveVesselExperienceFactorReport = handlerFactory.saveDocument(
 	VesselExperienceFactor,
 );
 
-// 2. Get All - Filtered by the logged-in user for their dashboard
-exports.getAllVesselExperienceFactorReports = async (req, res, next) => {
+// 2. Retrieve all reports created by the currently logged-in user
+exports.getAllVesselExperienceFactorReports = async (
+	request,
+	response,
+	next,
+) => {
 	try {
-		// Sort by updatedAt so the most recent reports appear first
-		const documents = await VesselExperienceFactor.find({
-			userRef: req.user.id,
-		}).sort({ updatedAt: -1 });
+		const userId = request.user.id; // Extracted via verifyToken middleware
 
-		res.status(200).json(documents);
+		// Find documents matching the user's reference and sort from newest to oldest
+		const documents = await VesselExperienceFactor.find({
+			userReference: userId,
+		}).sort({
+			updatedAt: -1,
+		});
+
+		response.status(200).json(documents);
 	} catch (error) {
 		next(error);
 	}
 };
 
-// 3. Get Single - Specific report for Edit/View with security check
-exports.getVesselExperienceFactorReport = async (req, res, next) => {
+// 3. Retrieve a single specific report by its database ID with structural security checks
+exports.getVesselExperienceFactorReport = async (request, response, next) => {
 	try {
-		const document = await VesselExperienceFactor.findById(req.params.id);
+		const documentId = request.params.id;
+		const report = await VesselExperienceFactor.findById(documentId);
 
-		if (!document) {
-			return res.status(404).json({
+		if (!report) {
+			return response
+				.status(404)
+				.json({ success: false, message: "Report not found" });
+		}
+
+		// Security boundary: Validate that the document's creator matches the requesting session
+		if (report.userReference.toString() !== request.user.id) {
+			return response.status(403).json({
 				success: false,
-				message: "Vessel Experience Factor report not found",
+				message: "Unauthorized access: You cannot view this report.",
 			});
 		}
 
-		// Security: Ensure only the owner can access this specific ID
-		if (document.userRef !== req.user.id) {
-			return res
-				.status(403)
-				.json({ success: false, message: "Unauthorized access" });
-		}
-
-		res.status(200).json(document);
+		response.status(200).json(report);
 	} catch (error) {
 		next(error);
 	}
 };
 
-// 4. Public/Admin Fetcher - Shows reports from all users
-exports.getEveryonesVesselExperienceFactorReports = async (req, res, next) => {
+// 4. Public/Admin endpoint to fetch every vessel experience factor report in the entire database
+exports.getEveryonesVesselExperienceFactorReports = async (
+	request,
+	response,
+	next,
+) => {
 	try {
+		// Pull all documents, inject user creator information, and sort by update timeline
 		const documents = await VesselExperienceFactor.find()
-			.populate("userRef", "username avatar")
+			.populate("userReference", "username avatar")
 			.sort({ updatedAt: -1 });
 
-		res.status(200).json(documents);
+		response.status(200).json(documents);
 	} catch (error) {
 		next(error);
 	}

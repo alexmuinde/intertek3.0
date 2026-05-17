@@ -1,57 +1,61 @@
 const StatementOfFacts = require("../models/statementOfFactsModel.js");
-const factory = require("./handlerFactory.js");
+const handlerFactory = require("./handlerFactory.js");
 
-// 1. Save or Update - Uses the secure factory logic we built
-exports.saveSOF = factory.saveDocument(StatementOfFacts);
+// Save or Update a report using the centralized factory blueprint
+exports.saveStatementOfFactsReport =
+	handlerFactory.saveDocument(StatementOfFacts);
 
-// 2. Get All - Used for the Profile Dashboard (Filtered by User)
-
-// statementOfFactsController.js
-
-exports.getAllSOF = async (req, res, next) => {
+// Retrieve all reports created by the currently logged-in user
+exports.getAllStatementOfFactsReports = async (request, response, next) => {
 	try {
-		// Sort by updatedAt so the most recently edited files appear first
+		const userId = request.user.id;
 		const documents = await StatementOfFacts.find({
-			userRef: req.user.id,
-		}).sort({ updatedAt: -1 });
-
-		res.status(200).json(documents);
+			userReference: userId,
+		}).sort({
+			updatedAt: -1,
+		});
+		response.status(200).json(documents);
 	} catch (error) {
 		next(error);
 	}
 };
 
-// 3. Get Single - Used when clicking "Edit" from the dashboard
-exports.getSOF = async (req, res, next) => {
+// Retrieve a single specific report by its database ID with structural security checks
+exports.getStatementOfFactsReport = async (request, response, next) => {
 	try {
-		const document = await StatementOfFacts.findById(req.params.id);
+		const documentId = request.params.id;
+		const report = await StatementOfFacts.findById(documentId);
 
-		if (!document)
-			return res
+		if (!report) {
+			return response
 				.status(404)
-				.json({ success: false, message: "Document not found" });
-
-		// Security: Prevent users from viewing someone else's document by ID
-		if (document.userRef !== req.user.id) {
-			return res
-				.status(403)
-				.json({ success: false, message: "Unauthorized access" });
+				.json({ success: false, message: "Report not found" });
 		}
 
-		res.status(200).json(document);
+		if (report.userReference.toString() !== request.user.id) {
+			return response
+				.status(403)
+				.json({ success: false, message: "Unauthorized access restriction" });
+		}
+
+		response.status(200).json(report);
 	} catch (error) {
 		next(error);
 	}
 };
 
-// Create a new public fetcher
-exports.getEveryonesDocs = async (req, res, next) => {
+// Public/Admin endpoint to fetch every statement of facts report in the entire database
+exports.getEveryonesStatementOfFactsReports = async (
+	request,
+	response,
+	next,
+) => {
 	try {
-		// Change 'Model' to 'StatementOfFacts'
 		const documents = await StatementOfFacts.find()
-			.populate("userRef", "username avatar")
+			.populate("userReference", "username avatar")
 			.sort({ updatedAt: -1 });
-		res.status(200).json(documents);
+
+		response.status(200).json(documents);
 	} catch (error) {
 		next(error);
 	}

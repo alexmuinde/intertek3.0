@@ -1,57 +1,70 @@
 const DischargeProcedureSequence = require("../models/dischargeProcedureSequenceModel.js");
-const factory = require("./handlerFactory.js");
+const handlerFactory = require("./handlerFactory.js");
 
-// 1. Core integration creation update routine mapped via master handlerFactory loop logic
-exports.saveDischargeProcedureSequence = factory.saveDocument(
+// Save or Update a report using the centralized factory framework blueprint
+exports.saveDischargeProcedureSequenceReport = handlerFactory.saveDocument(
 	DischargeProcedureSequence,
 );
 
-// 2. Fetch logs array mapped under active logged-in inspector profile
-exports.getAllDischargeProcedureSequences = async (req, res, next) => {
+// Retrieve all reports created by the currently logged-in user session
+exports.getAllDischargeProcedureSequenceReports = async (
+	request,
+	response,
+	next,
+) => {
 	try {
+		const userId = request.user.id;
 		const documents = await DischargeProcedureSequence.find({
-			userRef: req.user.id,
-		}).sort({ updatedAt: -1 });
-
-		res.status(200).json(documents);
+			userReference: userId,
+		}).sort({
+			updatedAt: -1,
+		});
+		response.status(200).json(documents);
 	} catch (error) {
 		next(error);
 	}
 };
 
-// 3. Extract single document validating security compliance requirements matching SealingReport layout
-exports.getDischargeProcedureSequence = async (req, res, next) => {
+// Retrieve a single specific report by ID with secure account reference validation
+exports.getDischargeProcedureSequenceReport = async (
+	request,
+	response,
+	next,
+) => {
 	try {
-		const document = await DischargeProcedureSequence.findById(req.params.id);
+		const documentId = request.params.id;
+		const report = await DischargeProcedureSequence.findById(documentId);
 
-		if (!document) {
-			return res.status(404).json({
-				success: false,
-				message: "Discharge procedure record sequence instance not found.",
-			});
+		if (!report) {
+			return response
+				.status(404)
+				.json({ success: false, message: "Report not found" });
 		}
 
-		if (document.userRef.toString() !== req.user.id) {
-			return res.status(403).json({
-				success: false,
-				message: "Unauthorized resource access vector restriction.",
-			});
+		if (report.userReference.toString() !== request.user.id) {
+			return response
+				.status(403)
+				.json({ success: false, message: "Unauthorized access restriction" });
 		}
 
-		res.status(200).json(document);
+		response.status(200).json(report);
 	} catch (error) {
 		next(error);
 	}
 };
 
-// 4. Admin dashboard stream aggregation query pipeline feeder overview
-exports.getEveryonesDischargeProcedureSequences = async (req, res, next) => {
+// Public/Admin endpoint to fetch every sequence log entry inside the database
+exports.getEveryonesDischargeProcedureSequenceReports = async (
+	request,
+	response,
+	next,
+) => {
 	try {
 		const documents = await DischargeProcedureSequence.find()
-			.populate("userRef", "username avatar")
+			.populate("userReference", "username avatar")
 			.sort({ updatedAt: -1 });
 
-		res.status(200).json(documents);
+		response.status(200).json(documents);
 	} catch (error) {
 		next(error);
 	}

@@ -3,20 +3,19 @@ import { useState, useEffect } from "react";
 import { useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
 
-export default function WheighBridge() {
-	// 1. Workflow: Pull current user to link this document to the surveyor
+export default function WeighBridge() {
+	// Workflow: Pull current user to link this document to the surveyor
 	const { currentUser } = useSelector((state) => state.user);
 	const navigate = useNavigate();
-
 	const { id } = useParams();
 
-	// 2. Logic: Track UI feedback (loading and error messages)
+	// Logic: Track UI feedback (loading and error messages)
 	const [error, setError] = useState(false);
 	const [loading, setLoading] = useState(false);
 
-	// 3. Workflow: Initial state containing EVERY field from the original HTML
+	// Workflow: Initial state using fully expanded naming conventions matching the backend schema
 	const [formData, setFormData] = useState({
-		userRef: currentUser._id,
+		userReference: currentUser._id,
 		intertekSurveyor: "",
 		placeOfLoading: "",
 		client: "",
@@ -28,14 +27,15 @@ export default function WheighBridge() {
 		vessel: "",
 		grade: "",
 		density: "",
-		shoreTankNo: "",
+		shoreTankNumber: "",
 		temperature: "",
+		constructionMaterial: "",
 		truckNumber: "",
 		driversName: "",
-		driversId: "",
+		driversIdentification: "",
 		grossWeight: "",
 		tareWeight: "",
-		nettWeight: "",
+		netWeight: "",
 		cumulativeWeight: "",
 		weighbridgeReceipt: "",
 		previousCargo: "",
@@ -56,11 +56,12 @@ export default function WheighBridge() {
 			const fetchReport = async () => {
 				setLoading(true);
 				try {
-					const res = await fetch(`/api/wheighBridge/get/${id}`);
+					// Synchronized with corrected lowercase/hyphenated backend route path
+					const res = await fetch(`/api/weighBridge/get/${id}`);
 					const data = await res.json();
 
 					if (data.success !== false) {
-						// Format dates to YYYY-MM-DD for HTML5 inputs
+						// Format dates to YYYY-MM-DD for HTML5 inputs safely
 						const formattedData = {
 							...data,
 							dateOfLoading: data.dateOfLoading
@@ -90,7 +91,7 @@ export default function WheighBridge() {
 			// If 'id' exists in URL, include it in body to trigger an Update in the backend
 			const body = id ? { ...formData, _id: id } : formData;
 
-			const res = await fetch("/api/wheighBridge/save", {
+			const res = await fetch("/api/weighBridge/save", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify(body),
@@ -101,11 +102,10 @@ export default function WheighBridge() {
 			if (data.success !== false) {
 				alert("Record Saved!");
 
-				// If it was a NEW record, redirect to its unique update URL
+				// If it was a NEW record, redirect to its unique update URL with clean filename path
 				if (!id && data._id) {
-					navigate(`/wheighBridge/${data._id}`);
+					navigate(`/weighBridge/${data._id}`);
 				}
-				// If already updating, the UI stays current
 			} else {
 				setError(data.message);
 			}
@@ -131,6 +131,7 @@ export default function WheighBridge() {
 			[field]: [...formData[field], ""],
 		});
 	};
+
 	// Specialized handler for array fields (seals)
 	const handleSealChange = (index, value, field) => {
 		const updatedSeals = [...formData[field]];
@@ -139,7 +140,6 @@ export default function WheighBridge() {
 	};
 
 	const handleRemoveSeal = (index, field) => {
-		// Only allow removal if there is more than one field (optional)
 		if (formData[field].length > 1) {
 			setFormData({
 				...formData,
@@ -148,7 +148,7 @@ export default function WheighBridge() {
 		}
 	};
 
-	// 6. Workflow: UI Styles (Sunken hover effect and subtle divider)
+	// UI Styles (Sunken hover effect and subtle divider)
 	const inputStyle =
 		"w-full bg-[#f8f6f6] p-2 border-b border-black outline-none transition-all hover:shadow-[inset_0_2px_5px_rgba(0,0,0,0.19)] focus:border focus:shadow-[2px_2px_rgba(0,0,0,0.19)] text-sm";
 	const labelStyle = "block text-[12px] pl-1 mb-1 text-gray-700 font-bold";
@@ -160,7 +160,7 @@ export default function WheighBridge() {
 					ROAD/ RAIL TANK SURVEY INSPECTION REPORT
 				</h1>
 				<p className="text-[12px] font-bold border-b border-gray-200 pb-1 mt-2 italic text-gray-600">
-					To whom ever it may concern
+					To whom it may concern
 				</p>
 			</header>
 
@@ -299,18 +299,18 @@ export default function WheighBridge() {
 								/>
 							</div>
 							<div>
-								<label className={labelStyle}>Shore Tank</label>
+								<label className={labelStyle}>Shore Tank Number</label>
 								<input
 									onChange={handleChange}
-									id="shoreTankNo"
+									id="shoreTankNumber"
 									className={inputStyle}
 									type="text"
 									required
-									value={formData.shoreTankNo || ""}
+									value={formData.shoreTankNumber || ""}
 								/>
 							</div>
 							<div>
-								<label className={labelStyle}>Temp</label>
+								<label className={labelStyle}>Temperature (°C)</label>
 								<input
 									onChange={handleChange}
 									id="temperature"
@@ -321,7 +321,7 @@ export default function WheighBridge() {
 								/>
 							</div>
 							<div>
-								<label className={labelStyle}>Material</label>
+								<label className={labelStyle}>Construction Material</label>
 								<input
 									onChange={handleChange}
 									id="constructionMaterial"
@@ -334,12 +334,12 @@ export default function WheighBridge() {
 						</div>
 					</div>
 
-					{/* RIGHT HALF: Weights, Seals & Checklist (With Subtle Divider) */}
+					{/* RIGHT HALF: Vehicle Weights, Security Seals & Inspection Checklist */}
 					<div className="flex-1 flex flex-col gap-5 border-t lg:border-t-0 lg:border-l-2 border-gray-200 lg:pl-10 pt-6 lg:pt-0">
 						{/* Vehicle & Weight Information */}
 						<div className="grid grid-cols-3 gap-2">
 							<div className="col-span-1">
-								<label className={labelStyle}>Truck No.</label>
+								<label className={labelStyle}>Truck Number</label>
 								<input
 									onChange={handleChange}
 									id="truckNumber"
@@ -350,7 +350,7 @@ export default function WheighBridge() {
 								/>
 							</div>
 							<div className="col-span-1">
-								<label className={labelStyle}>Driver</label>
+								<label className={labelStyle}>Drivers Name</label>
 								<input
 									onChange={handleChange}
 									id="driversName"
@@ -361,18 +361,18 @@ export default function WheighBridge() {
 								/>
 							</div>
 							<div className="col-span-1">
-								<label className={labelStyle}>Driver ID</label>
+								<label className={labelStyle}>Drivers Identification</label>
 								<input
 									onChange={handleChange}
-									id="driversId"
+									id="driversIdentification"
 									className={inputStyle}
 									type="text"
 									required
-									value={formData.driversId || ""}
+									value={formData.driversIdentification || ""}
 								/>
 							</div>
 							<div>
-								<label className={labelStyle}>Gross</label>
+								<label className={labelStyle}>Gross Weight</label>
 								<input
 									onChange={handleChange}
 									id="grossWeight"
@@ -383,7 +383,7 @@ export default function WheighBridge() {
 								/>
 							</div>
 							<div>
-								<label className={labelStyle}>Tare</label>
+								<label className={labelStyle}>Tare Weight</label>
 								<input
 									onChange={handleChange}
 									id="tareWeight"
@@ -394,18 +394,18 @@ export default function WheighBridge() {
 								/>
 							</div>
 							<div>
-								<label className={labelStyle}>Nett</label>
+								<label className={labelStyle}>Net Weight</label>
 								<input
 									onChange={handleChange}
-									id="nettWeight"
+									id="netWeight"
 									className={inputStyle}
 									type="number"
 									required
-									value={formData.nettWeight || ""}
+									value={formData.netWeight || ""}
 								/>
 							</div>
 							<div>
-								<label className={labelStyle}>Cumulative</label>
+								<label className={labelStyle}>Cumulative Weight</label>
 								<input
 									onChange={handleChange}
 									id="cumulativeWeight"
@@ -416,7 +416,7 @@ export default function WheighBridge() {
 								/>
 							</div>
 							<div>
-								<label className={labelStyle}>Receipt No.</label>
+								<label className={labelStyle}>Weighbridge Receipt</label>
 								<input
 									onChange={handleChange}
 									id="weighbridgeReceipt"
@@ -427,7 +427,7 @@ export default function WheighBridge() {
 								/>
 							</div>
 							<div>
-								<label className={labelStyle}>Prev Cargo</label>
+								<label className={labelStyle}>Previous Cargo</label>
 								<input
 									onChange={handleChange}
 									id="previousCargo"
@@ -439,12 +439,13 @@ export default function WheighBridge() {
 							</div>
 						</div>
 
-						{/* Certification & Seals */}
+						{/* Quality Certification Statement */}
 						<p className="text-[12px] p-2 bg-gray-50 italic">
 							We certify that the above truck has been found to be clean and fit
 							condition.
 						</p>
 
+						{/* Dynamic Seals & Checkbox Arrays Container */}
 						<div className="grid grid-cols-1 gap-3">
 							<div>
 								<label className={labelStyle}>Track Sealed By</label>
@@ -576,7 +577,7 @@ export default function WheighBridge() {
 							</div>
 						</div>
 
-						{/* FULL CHECKLIST (All 5 Items) */}
+						{/* FULL CHECKLIST SECTION */}
 						<div className="flex flex-col gap-1 mt-2">
 							{[
 								{
@@ -620,9 +621,10 @@ export default function WheighBridge() {
 					</div>
 				</div>
 
-				{/* 7. Logic: Submission Footer */}
+				{/* Submission Footer */}
 				<footer className="mt-4 border-t pt-6">
 					<button
+						type="submit"
 						disabled={loading}
 						className="w-full bg-black text-white p-4 font-bold uppercase hover:bg-gray-800 disabled:opacity-50 transition-all shadow-md"
 					>
@@ -638,28 +640,3 @@ export default function WheighBridge() {
 		</main>
 	);
 }
-
-/**import React from "react";
-
-export default function WheighBridge() {
-	return (
-		<main className="p-3 max-w-lg mx-auto">
-			<h1 className="text-3xl font-bold text center my-7 uppercase">
-				Road/Rail Tank Survey Inspection Report
-			</h1>
-			<div>
-				<label>Intertek Surveyor</label>
-				<input
-					type="text"
-					placeholder="Intertek Surveyor"
-					id="intertekSurveyor"
-					required
-					maxLength={62}
-					minLength={10}
-					className="border p-3 rounded-lg"
-				/>
-			</div>
-		</main>
-	);
-}
- */

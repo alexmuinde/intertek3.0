@@ -1,114 +1,200 @@
-import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
 import { useSelector } from "react-redux";
+import { useNavigate, useParams } from "react-router-dom";
 
 export default function ShoreTankQuantityReport() {
 	const { currentUser } = useSelector((state) => state.user);
-	const { id } = useParams();
 	const navigate = useNavigate();
+	const { id } = useParams();
+
+	const [error, setError] = useState(false);
 	const [loading, setLoading] = useState(false);
 
 	const [formData, setFormData] = useState({
-		vessel: "",
-		date: "",
-		port: "",
-		installation: "",
-		product: "",
-		operation: "",
-		// Dynamic Measurement Rows
-		measurements: [
+		userReference: currentUser._id,
+		dateOfReport: "",
+		vesselName: "",
+		portName: "",
+		installationName: "",
+		productDescription: "",
+		operationType: "",
+
+		// Parallel array tracking states initialization for Tank Entries
+		overallDipMillimeters: [""],
+		productDipMillimeters: [""],
+		tankTemperatures: [""],
+		densityValues: [""],
+		observedVolumeLiters: [""],
+		weightMetricTonsInAir: [""],
+		datesOfMeasurements: [""],
+		timesOfMeasurements: [""],
+		measurementRemarks: [""],
+
+		densityTemperatureBasis: "30",
+		coefficientFactor: "",
+
+		dippingTapeSerialNumber: "",
+		dippingTapeCalibrationCertificateNumber: "",
+		dippingTapeExpiryDate: "",
+		thermometerSerialNumber: "",
+		thermometerCalibrationCertificateNumber: "",
+		thermometerExpiryDate: "",
+
+		intertekInspector: "",
+		representatives: [
 			{
-				overallDipMm: "",
-				productDipMm: "",
-				tankTemp: "",
-				density: "",
-				observedVolLtrs: "",
-				weightMTonsAir: "",
+				representativeName: "",
+				representativeIdentification: "",
+				representativeEmail: "",
 			},
 		],
-		densityAt: "30",
-		coefficientFactor: "",
-		dippingTapeSerial: "",
-		dippingTapeCert: "",
-		dippingTapeExpiry: "",
-		thermometerSerial: "",
-		thermometerCert: "",
-		thermometerExpiry: "",
-		remarks: "",
-		inspectorName: "",
-		representatives: [{ name: "", id: "", email: "" }],
 	});
 
 	useEffect(() => {
 		if (id) {
-			const fetchData = async () => {
-				const res = await fetch(`/api/shoreTankQuantityReport/get/${id}`);
-				const data = await res.json();
-				if (data.success !== false) {
-					setFormData({
-						...data,
-						date: data.date ? data.date.split("T")[0] : "",
-						dippingTapeExpiry: data.dippingTapeExpiry
-							? data.dippingTapeExpiry.split("T")[0]
-							: "",
-						thermometerExpiry: data.thermometerExpiry
-							? data.thermometerExpiry.split("T")[0]
-							: "",
-					});
+			const fetchReport = async () => {
+				setLoading(true);
+				try {
+					const res = await fetch(`/api/shoreTankQuantityReport/get/${id}`);
+					const data = await res.json();
+					if (data.success !== false) {
+						setFormData({
+							...data,
+							dateOfReport: data.dateOfReport
+								? data.dateOfReport.split("T")[0]
+								: "",
+							dippingTapeExpiryDate: data.dippingTapeExpiryDate
+								? data.dippingTapeExpiryDate.split("T")[0]
+								: "",
+							thermometerExpiryDate: data.thermometerExpiryDate
+								? data.thermometerExpiryDate.split("T")[0]
+								: "",
+							datesOfMeasurements: data.datesOfMeasurements.map((d) =>
+								d ? d.split("T")[0] : "",
+							),
+						});
+					} else {
+						setError(data.message);
+					}
+				} catch (err) {
+					setError(true);
+				} finally {
+					setLoading(false);
 				}
 			};
-			fetchData();
+			fetchReport();
 		}
 	}, [id]);
 
-	const handleChange = (e) =>
-		setFormData({ ...formData, [e.target.id]: e.target.value });
-
-	// --- DYNAMIC MEASUREMENT LOGIC ---
-	const handleMeasureChange = (index, e) => {
-		const newMeasures = [...formData.measurements];
-		newMeasures[index][e.target.name] = e.target.value;
-		setFormData({ ...formData, measurements: newMeasures });
+	const handleSubmit = async (e) => {
+		e.preventDefault();
+		setLoading(true);
+		setError(false);
+		try {
+			const body = id ? { ...formData, _id: id } : formData;
+			const res = await fetch("/api/shoreTankQuantityReport/save", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(body),
+			});
+			const data = await res.json();
+			if (data.success !== false) {
+				alert("Record Saved Successfully!");
+				if (!id && data._id) {
+					navigate(`/shoreTankQuantityReport/${data._id}`);
+				}
+			} else {
+				setError(data.message);
+			}
+		} catch (err) {
+			setError("Failed to establish server communication channels");
+		} finally {
+			setLoading(false);
+		}
 	};
-	const addMeasure = () =>
+
+	const handleChange = (e) => {
+		const { id, value } = e.target;
+		setFormData({ ...formData, [id]: value });
+	};
+
+	// Parallel Arrays Master Utility Append for Tank Entries
+	const handleAddTankRecord = () => {
 		setFormData({
 			...formData,
-			measurements: [
-				...formData.measurements,
-				{
-					overallDipMm: "",
-					productDipMm: "",
-					tankTemp: "",
-					density: "",
-					observedVolLtrs: "",
-					weightMTonsAir: "",
-				},
-			],
+			overallDipMillimeters: [...formData.overallDipMillimeters, ""],
+			productDipMillimeters: [...formData.productDipMillimeters, ""],
+			tankTemperatures: [...formData.tankTemperatures, ""],
+			densityValues: [...formData.densityValues, ""],
+			observedVolumeLiters: [...formData.observedVolumeLiters, ""],
+			weightMetricTonsInAir: [...formData.weightMetricTonsInAir, ""],
+			datesOfMeasurements: [...formData.datesOfMeasurements, ""],
+			timesOfMeasurements: [...formData.timesOfMeasurements, ""],
+			measurementRemarks: [...formData.measurementRemarks, ""],
 		});
-	const removeMeasure = (index) => {
-		if (formData.measurements.length > 1) {
+	};
+
+	const handleTankItemChange = (index, value, field) => {
+		const updatedList = [...formData[field]];
+		updatedList[index] = value;
+		setFormData({ ...formData, [field]: updatedList });
+	};
+
+	const handleRemoveTankRecord = (index) => {
+		if (formData.overallDipMillimeters.length > 1) {
 			setFormData({
 				...formData,
-				measurements: formData.measurements.filter((_, i) => i !== index),
+				overallDipMillimeters: formData.overallDipMillimeters.filter(
+					(_, i) => i !== index,
+				),
+				productDipMillimeters: formData.productDipMillimeters.filter(
+					(_, i) => i !== index,
+				),
+				tankTemperatures: formData.tankTemperatures.filter(
+					(_, i) => i !== index,
+				),
+				densityValues: formData.densityValues.filter((_, i) => i !== index),
+				observedVolumeLiters: formData.observedVolumeLiters.filter(
+					(_, i) => i !== index,
+				),
+				weightMetricTonsInAir: formData.weightMetricTonsInAir.filter(
+					(_, i) => i !== index,
+				),
+				datesOfMeasurements: formData.datesOfMeasurements.filter(
+					(_, i) => i !== index,
+				),
+				timesOfMeasurements: formData.timesOfMeasurements.filter(
+					(_, i) => i !== index,
+				),
+				measurementRemarks: formData.measurementRemarks.filter(
+					(_, i) => i !== index,
+				),
 			});
 		}
 	};
 
-	// --- DYNAMIC REPRESENTATIVE LOGIC ---
-	const handleRepChange = (index, e) => {
-		const newReps = [...formData.representatives];
-		newReps[index][e.target.name] = e.target.value;
-		setFormData({ ...formData, representatives: newReps });
-	};
-	const addRep = () =>
+	// Grouped Representative Array Item Handlers
+	const handleAddRepresentativeRow = () => {
 		setFormData({
 			...formData,
 			representatives: [
 				...formData.representatives,
-				{ name: "", id: "", email: "" },
+				{
+					representativeName: "",
+					representativeIdentification: "",
+					representativeEmail: "",
+				},
 			],
 		});
-	const removeRep = (index) => {
+	};
+
+	const handleRepresentativeRowChange = (index, field, value) => {
+		const updatedRepresentatives = [...formData.representatives];
+		updatedRepresentatives[index][field] = value;
+		setFormData({ ...formData, representatives: updatedRepresentatives });
+	};
+
+	const handleRemoveRepresentativeRow = (index) => {
 		if (formData.representatives.length > 1) {
 			setFormData({
 				...formData,
@@ -117,329 +203,512 @@ export default function ShoreTankQuantityReport() {
 		}
 	};
 
-	const handleSubmit = async (e) => {
-		e.preventDefault();
-		setLoading(true);
-
-		// 1. Clean the data: remove empty date strings so Mongoose doesn't crash
-		const cleanedData = { ...formData };
-		if (!cleanedData.date) delete cleanedData.date;
-		if (!cleanedData.dippingTapeExpiry) delete cleanedData.dippingTapeExpiry;
-		if (!cleanedData.thermometerExpiry) delete cleanedData.thermometerExpiry;
-
-		const body = id
-			? { ...cleanedData, _id: id }
-			: { ...cleanedData, userRef: currentUser._id };
-
-		try {
-			const res = await fetch("/api/shoreTankQuantityReport/save", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify(body),
-			});
-
-			const data = await res.json();
-
-			if (data.success !== false) {
-				alert("Report Saved!");
-				if (!id) navigate(`/shoreTankQuantityReport/${data._id}`);
-			} else {
-				// This will now show the specific Mongoose validation error
-				alert("Save Failed: " + data.message);
-			}
-		} catch (err) {
-			console.error("Submit Error:", err);
-		} finally {
-			setLoading(false);
-		}
-	};
+	const inputStyle =
+		"w-full bg-[#f8f6f6] p-2 border-b border-black outline-none transition-all hover:shadow-[inset_0_2px_5px_rgba(0,0,0,0.19)] focus:border focus:shadow-[2px_2px_rgba(0,0,0,0.19)] text-xs font-serif font-medium";
+	const labelStyle =
+		"block text-[11px] pl-1 mb-1 text-gray-700 font-bold tracking-wide uppercase font-serif";
 
 	return (
-		<main className="p-4 max-w-7xl mx-auto font-serif text-gray-800">
-			<h1 className="text-2xl font-bold text-center mb-6 uppercase tracking-widest border-b-2 border-black pb-2">
-				Shore Tank Quantity Report
-			</h1>
+		<main className="p-4 max-w-7xl mx-auto font-serif bg-white text-gray-900">
+			<header className="mb-4 border-b-2 border-black pb-2">
+				<h1 className="text-base font-bold text-center uppercase tracking-widest">
+					SHORE TANK QUANTITY REPORT
+				</h1>
+			</header>
 
-			<form onSubmit={handleSubmit} className="flex flex-col lg:flex-row gap-8">
-				{/* LEFT: Operation & Measurements */}
-				<div className="flex-1 border-b-2 lg:border-b-0 lg:border-r-2 border-gray-200 pr-0 lg:pr-8">
-					<div className="grid grid-cols-2 gap-4 mb-6">
-						<div className="col-span-2">
-							<label className="text-xs font-bold uppercase text-gray-500">
-								Vessel
-							</label>
-							<input
-								type="text"
-								id="vessel"
-								onChange={handleChange}
-								value={formData.vessel}
-								className="w-full border-b border-black outline-none p-1 focus:bg-gray-50"
-							/>
+			<form onSubmit={handleSubmit} className="flex flex-col gap-8">
+				{/* Side-by-Side Flex Layout Container */}
+				<div className="flex flex-col lg:flex-row gap-10">
+					{/* LEFT HALF: Document Logistics Header & Multi Tank Entry Lists */}
+					<div className="flex-1 flex flex-col gap-6">
+						<div className="bg-gray-100 p-2 border-l-4 border-black">
+							<h2 className="text-xs font-bold uppercase tracking-wider">
+								Logistics Context & Core Identity
+							</h2>
 						</div>
-						<div>
-							<label className="text-xs font-bold uppercase text-gray-500">
-								Date
-							</label>
-							<input
-								type="date"
-								id="date"
-								onChange={handleChange}
-								value={formData.date}
-								className="w-full border-b border-black outline-none p-1"
-							/>
-						</div>
-						<div>
-							<label className="text-xs font-bold uppercase text-gray-500">
-								Port
-							</label>
-							<input
-								type="text"
-								id="port"
-								onChange={handleChange}
-								value={formData.port}
-								className="w-full border-b border-black outline-none p-1"
-							/>
-						</div>
-					</div>
 
-					<div className="flex justify-between items-center bg-black text-white p-1 mb-4">
-						<h2 className="text-sm font-bold uppercase tracking-tighter">
-							Measurement Data
-						</h2>
-						<button
-							type="button"
-							onClick={addMeasure}
-							className="text-[10px] bg-white text-black px-2 py-0.5 rounded font-bold hover:bg-gray-200"
-						>
-							+ ADD TANK
-						</button>
-					</div>
+						<div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+							<div>
+								<label className={labelStyle}>Date of Report</label>
+								<input
+									onChange={handleChange}
+									id="dateOfReport"
+									className={inputStyle}
+									type="date"
+									required
+									value={formData.dateOfReport || ""}
+								/>
+							</div>
+							<div>
+								<label className={labelStyle}>Vessel</label>
+								<input
+									onChange={handleChange}
+									id="vesselName"
+									className={inputStyle}
+									type="text"
+									required
+									value={formData.vesselName || ""}
+								/>
+							</div>
+							<div>
+								<label className={labelStyle}>Port</label>
+								<input
+									onChange={handleChange}
+									id="portName"
+									className={inputStyle}
+									type="text"
+									required
+									value={formData.portName || ""}
+								/>
+							</div>
+							<div>
+								<label className={labelStyle}>Installation</label>
+								<input
+									onChange={handleChange}
+									id="installationName"
+									className={inputStyle}
+									type="text"
+									required
+									value={formData.installationName || ""}
+								/>
+							</div>
+							<div>
+								<label className={labelStyle}>Product</label>
+								<input
+									onChange={handleChange}
+									id="productDescription"
+									className={inputStyle}
+									type="text"
+									required
+									value={formData.productDescription || ""}
+								/>
+							</div>
+							<div>
+								<label className={labelStyle}>Operation</label>
+								<input
+									onChange={handleChange}
+									id="operationType"
+									className={inputStyle}
+									type="text"
+									required
+									value={formData.operationType || ""}
+								/>
+							</div>
+						</div>
 
-					{formData.measurements.map((m, index) => (
-						<div
-							key={index}
-							className="relative p-3 border-b border-gray-100 mb-4 group bg-gray-50/50"
-						>
-							{index > 0 && (
+						{/* Parallel Array Entry Fields for Multiple Tanks */}
+						<div className="flex flex-col gap-4 mt-2">
+							<div className="flex justify-between items-center bg-gray-100 p-2 border-l-4 border-blue-800">
+								<h2 className="text-xs font-bold uppercase tracking-wider">
+									Tank Measurement Metric Data Logs
+								</h2>
 								<button
 									type="button"
-									onClick={() => removeMeasure(index)}
-									className="absolute top-0 right-0 text-red-500 font-bold px-2"
+									onClick={handleAddTankRecord}
+									className="text-[10px] bg-black text-white px-3 py-1 font-bold rounded hover:bg-gray-800 transition-all uppercase"
 								>
-									&times;
+									+ Add Tank Entry
 								</button>
-							)}
-							<div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-2">
-								{Object.keys(m).map((key) => (
-									<div key={key}>
-										<label className="text-[9px] font-bold text-gray-400 uppercase">
-											{key.replace(/([A-Z])/g, " $1")}
-										</label>
-										<input
-											type="text"
-											name={key}
-											value={m[key]}
-											onChange={(e) => handleMeasureChange(index, e)}
-											className="w-full border-b border-gray-300 outline-none p-0.5 text-xs bg-transparent"
-										/>
+							</div>
+
+							<div className="flex flex-col gap-6 max-h-[500px] overflow-y-auto pr-1">
+								{formData.overallDipMillimeters.map((_, index) => (
+									<div
+										key={index}
+										className="grid grid-cols-2 md:grid-cols-3 gap-3 bg-gray-50/60 p-3 border border-gray-200 rounded relative pt-8"
+									>
+										<span className="absolute top-1 left-2 text-[10px] font-bold bg-blue-800 text-white px-2 py-0.5 rounded">
+											Tank Log #{index + 1}
+										</span>
+										{formData.overallDipMillimeters.length > 1 && (
+											<button
+												type="button"
+												onClick={() => handleRemoveTankRecord(index)}
+												className="absolute top-1 right-2 text-[10px] border border-red-300 text-red-500 bg-white px-2 py-0.5 rounded hover:bg-red-50 font-bold uppercase"
+											>
+												Delete Tank
+											</button>
+										)}
+										<div>
+											<label className={labelStyle}>Overall Dip (mm)</label>
+											<input
+												value={formData.overallDipMillimeters[index]}
+												onChange={(e) =>
+													handleTankItemChange(
+														index,
+														e.target.value,
+														"overallDipMillimeters",
+													)
+												}
+												className={inputStyle}
+												type="number"
+												required
+											/>
+										</div>
+										<div>
+											<label className={labelStyle}>Product Dip (mm)</label>
+											<input
+												value={formData.productDipMillimeters[index]}
+												onChange={(e) =>
+													handleTankItemChange(
+														index,
+														e.target.value,
+														"productDipMillimeters",
+													)
+												}
+												className={inputStyle}
+												type="number"
+												required
+											/>
+										</div>
+										<div>
+											<label className={labelStyle}>Tank Temp (°C)</label>
+											<input
+												value={formData.tankTemperatures[index]}
+												onChange={(e) =>
+													handleTankItemChange(
+														index,
+														e.target.value,
+														"tankTemperatures",
+													)
+												}
+												className={inputStyle}
+												type="number"
+												step="any"
+												required
+											/>
+										</div>
+										<div>
+											<label className={labelStyle}>Density</label>
+											<input
+												value={formData.densityValues[index]}
+												onChange={(e) =>
+													handleTankItemChange(
+														index,
+														e.target.value,
+														"densityValues",
+													)
+												}
+												className={inputStyle}
+												type="number"
+												step="any"
+												required
+											/>
+										</div>
+										<div>
+											<label className={labelStyle}>
+												Observed Volume (Ltrs)
+											</label>
+											<input
+												value={formData.observedVolumeLiters[index]}
+												onChange={(e) =>
+													handleTankItemChange(
+														index,
+														e.target.value,
+														"observedVolumeLiters",
+													)
+												}
+												className={inputStyle}
+												type="number"
+												step="any"
+												required
+											/>
+										</div>
+										<div>
+											<label className={labelStyle}>Weight M.Tons (Air)</label>
+											<input
+												value={formData.weightMetricTonsInAir[index]}
+												onChange={(e) =>
+													handleTankItemChange(
+														index,
+														e.target.value,
+														"weightMetricTonsInAir",
+													)
+												}
+												className={inputStyle}
+												type="number"
+												step="any"
+												required
+											/>
+										</div>
+										<div>
+											<label className={labelStyle}>Date of Measurement</label>
+											<input
+												value={formData.datesOfMeasurements[index]}
+												onChange={(e) =>
+													handleTankItemChange(
+														index,
+														e.target.value,
+														"datesOfMeasurements",
+													)
+												}
+												className={inputStyle}
+												type="date"
+												required
+											/>
+										</div>
+										<div>
+											<label className={labelStyle}>Time of Measurement</label>
+											<input
+												value={formData.timesOfMeasurements[index]}
+												onChange={(e) =>
+													handleTankItemChange(
+														index,
+														e.target.value,
+														"timesOfMeasurements",
+													)
+												}
+												className={inputStyle}
+												type="time"
+												required
+											/>
+										</div>
+										<div>
+											<label className={labelStyle}>Remarks</label>
+											<input
+												value={formData.measurementRemarks[index]}
+												onChange={(e) =>
+													handleTankItemChange(
+														index,
+														e.target.value,
+														"measurementRemarks",
+													)
+												}
+												className={inputStyle}
+												type="text"
+												required
+											/>
+										</div>
 									</div>
 								))}
 							</div>
 						</div>
-					))}
 
-					<div className="bg-gray-100 p-3 rounded mb-6 text-sm">
-						Density at{" "}
-						<select
-							id="densityAt"
-							onChange={handleChange}
-							value={formData.densityAt}
-							className="border-b border-black bg-transparent mx-1"
-						>
-							<option value="30">30</option>
-							<option value="50">50</option>
-						</select>
-						Coeff Factor:{" "}
-						<input
-							type="text"
-							id="coefficientFactor"
-							onChange={handleChange}
-							value={formData.coefficientFactor}
-							className="border-b border-black bg-transparent w-20 outline-none px-1"
-						/>
-					</div>
-
-					<h2 className="text-sm font-bold border-b border-black mb-4 uppercase">
-						Equipment Calibration
-					</h2>
-					<div className="grid grid-cols-3 gap-4 text-[11px] mb-8">
-						<div className="col-span-3 font-bold text-gray-500 border-b border-gray-100 uppercase text-[9px]">
-							Dipping Tape
+						{/* Verification Panel Details Container */}
+						<div className="p-3 bg-gray-50 border border-gray-200 rounded text-xs flex flex-wrap items-center gap-2">
+							<span className="font-bold uppercase tracking-wider text-gray-700">
+								Density at basis option:
+							</span>
+							<select
+								id="densityTemperatureBasis"
+								className="bg-white p-1 border border-gray-300 outline-none text-xs font-serif font-medium rounded mx-1 focus:border-black"
+								onChange={handleChange}
+								value={formData.densityTemperatureBasis}
+							>
+								<option value="30">30</option>
+								<option value="50">50</option>
+							</select>
+							<span className="font-bold uppercase tracking-wider text-gray-700 ml-2">
+								Coefficient Factor:
+							</span>
+							<input
+								onChange={handleChange}
+								id="coefficientFactor"
+								className="bg-[#f8f6f6] p-1 border-b border-black outline-none font-serif font-medium w-32 focus:border focus:border-black transition-all"
+								type="number"
+								step="any"
+								required
+								value={formData.coefficientFactor || ""}
+							/>
 						</div>
-						<input
-							type="text"
-							id="dippingTapeSerial"
-							placeholder="Serial"
-							onChange={handleChange}
-							value={formData.dippingTapeSerial}
-							className="border-b border-gray-300 outline-none"
-						/>
-						<input
-							type="text"
-							id="dippingTapeCert"
-							placeholder="Cert No"
-							onChange={handleChange}
-							value={formData.dippingTapeCert}
-							className="border-b border-gray-300 outline-none"
-						/>
-						<input
-							type="date"
-							id="dippingTapeExpiry"
-							onChange={handleChange}
-							value={formData.dippingTapeExpiry}
-							className="border-b border-gray-300 outline-none"
-						/>
+					</div>
 
-						<div className="col-span-3 font-bold text-gray-500 border-b border-gray-100 uppercase text-[9px] mt-2">
-							Thermometer
+					{/* RIGHT HALF: Tool Calibrations, Official Inspector, and Multi Witness List Matrix */}
+					<div className="flex-1 flex flex-col gap-6 border-t lg:border-t-0 lg:border-l-2 border-gray-200 lg:pl-10 pt-6 lg:pt-0">
+						<div className="bg-gray-100 p-2 border-l-4 border-black">
+							<h2 className="text-xs font-bold uppercase tracking-wider">
+								Equipment Verification & Calibration Data
+							</h2>
 						</div>
-						<input
-							type="text"
-							id="thermometerSerial"
-							placeholder="Serial"
-							onChange={handleChange}
-							value={formData.thermometerSerial}
-							className="border-b border-gray-300 outline-none"
-						/>
-						<input
-							type="text"
-							id="thermometerCert"
-							placeholder="Cert No"
-							onChange={handleChange}
-							value={formData.thermometerCert}
-							className="border-b border-gray-300 outline-none"
-						/>
-						<input
-							type="date"
-							id="thermometerExpiry"
-							onChange={handleChange}
-							value={formData.thermometerExpiry}
-							className="border-b border-gray-300 outline-none"
-						/>
-					</div>
-				</div>
 
-				{/* RIGHT: Remarks, Inspector & Reps */}
-				<div className="flex-1 lg:pl-8 space-y-6">
-					<h2 className="text-sm font-bold border-b border-black uppercase tracking-tighter">
-						Authorization
-					</h2>
-
-					<div>
-						<label className="text-xs font-bold text-gray-400 uppercase">
-							Remarks / Observations
-						</label>
-						<textarea
-							id="remarks"
-							onChange={handleChange}
-							value={formData.remarks}
-							className="w-full border-b border-gray-300 outline-none p-1 text-sm min-h-[80px] focus:bg-gray-50"
-							placeholder="Enter any additional notes..."
-						/>
-					</div>
-
-					<div>
-						<label className="text-xs font-bold text-gray-400 uppercase">
-							Intertek Inspector
-						</label>
-						<input
-							type="text"
-							id="inspectorName"
-							onChange={handleChange}
-							value={formData.inspectorName}
-							className="w-full border-b border-gray-300 outline-none p-1 focus:bg-gray-50"
-						/>
-					</div>
-
-					<div className="flex justify-between items-center border-b border-black pt-4">
-						<h2 className="text-sm font-bold uppercase">Representatives</h2>
-						<button
-							type="button"
-							onClick={addRep}
-							className="text-[10px] bg-blue-600 text-white px-2 py-0.5 rounded font-bold hover:bg-blue-700"
-						>
-							+ ADD REP
-						</button>
-					</div>
-
-					{formData.representatives.map((rep, index) => (
-						<div
-							key={index}
-							className="p-3 bg-gray-50 rounded relative border border-gray-100"
-						>
-							{index > 0 && (
-								<button
-									type="button"
-									onClick={() => removeRep(index)}
-									className="absolute top-1 right-2 text-red-500 font-bold"
-								>
-									&times;
-								</button>
-							)}
-							<div className="space-y-3">
-								<div>
-									<label className="text-[10px] font-bold text-gray-400 uppercase">
-										Name
-									</label>
-									<input
-										type="text"
-										name="name"
-										onChange={(e) => handleRepChange(index, e)}
-										value={rep.name}
-										className="w-full border-b border-gray-300 bg-transparent outline-none text-sm"
-									/>
-								</div>
-								<div className="grid grid-cols-2 gap-4">
-									<div>
-										<label className="text-[10px] font-bold text-gray-400 uppercase">
-											ID Number
-										</label>
-										<input
-											type="text"
-											name="id"
-											onChange={(e) => handleRepChange(index, e)}
-											value={rep.id}
-											className="w-full border-b border-gray-300 bg-transparent outline-none text-xs"
-										/>
-									</div>
-									<div>
-										<label className="text-[10px] font-bold text-gray-400 uppercase">
-											Email
-										</label>
-										<input
-											type="email"
-											name="email"
-											onChange={(e) => handleRepChange(index, e)}
-											value={rep.email}
-											className="w-full border-b border-gray-300 bg-transparent outline-none text-xs"
-										/>
-									</div>
-								</div>
+						<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+							<div>
+								<label className={labelStyle}>Dipping Tape Serial No.</label>
+								<input
+									onChange={handleChange}
+									id="dippingTapeSerialNumber"
+									className={inputStyle}
+									type="text"
+									required
+									value={formData.dippingTapeSerialNumber || ""}
+								/>
+							</div>
+							<div>
+								<label className={labelStyle}>Tape Cert No.</label>
+								<input
+									onChange={handleChange}
+									id="dippingTapeCalibrationCertificateNumber"
+									className={inputStyle}
+									type="text"
+									required
+									value={formData.dippingTapeCalibrationCertificateNumber || ""}
+								/>
+							</div>
+							<div className="md:col-span-2">
+								<label className={labelStyle}>Tape Expiry Date</label>
+								<input
+									onChange={handleChange}
+									id="dippingTapeExpiryDate"
+									className={inputStyle}
+									type="date"
+									required
+									value={formData.dippingTapeExpiryDate || ""}
+								/>
+							</div>
+							<div>
+								<label className={labelStyle}>Thermometer Serial No.</label>
+								<input
+									onChange={handleChange}
+									id="thermometerSerialNumber"
+									className={inputStyle}
+									type="text"
+									required
+									value={formData.thermometerSerialNumber || ""}
+								/>
+							</div>
+							<div>
+								<label className={labelStyle}>Thermometer Cert No.</label>
+								<input
+									onChange={handleChange}
+									id="thermometerCalibrationCertificateNumber"
+									className={inputStyle}
+									type="text"
+									required
+									value={formData.thermometerCalibrationCertificateNumber || ""}
+								/>
+							</div>
+							<div className="md:col-span-2">
+								<label className={labelStyle}>Thermometer Expiry Date</label>
+								<input
+									onChange={handleChange}
+									id="thermometerExpiryDate"
+									className={inputStyle}
+									type="date"
+									required
+									value={formData.thermometerExpiryDate || ""}
+								/>
 							</div>
 						</div>
-					))}
 
+						<div className="border-t border-gray-100 pt-4">
+							<label className={labelStyle}>Intertek Inspector Name</label>
+							<input
+								onChange={handleChange}
+								id="intertekInspector"
+								className={inputStyle}
+								type="text"
+								placeholder="Full Operational Inspector Name"
+								required
+								value={formData.intertekInspector || ""}
+							/>
+						</div>
+
+						{/* Grouped Dynamic Witness List Container */}
+						<div className="border-t border-gray-100 pt-4 space-y-4">
+							<div className="flex justify-between items-center bg-gray-50 p-2 border-l-4 border-purple-800">
+								<h3 className="text-xs font-bold uppercase tracking-wider font-serif">
+									Witness Representatives Authentication
+								</h3>
+								<button
+									type="button"
+									onClick={handleAddRepresentativeRow}
+									className="text-[10px] bg-black text-white px-3 py-1 font-bold rounded uppercase hover:bg-gray-800 transition-all"
+								>
+									+ Add Representative
+								</button>
+							</div>
+
+							<div className="flex flex-col gap-4 max-h-[350px] overflow-y-auto pr-1">
+								{formData.representatives.map((representative, index) => (
+									<div
+										key={index}
+										className="grid grid-cols-1 md:grid-cols-3 gap-3 bg-gray-50 p-3 border border-gray-200 rounded relative pt-8"
+									>
+										<span className="absolute top-1 left-2 text-[9px] font-bold bg-purple-800 text-white px-2 py-0.5 rounded">
+											Witness Profile #{index + 1}
+										</span>
+										{formData.representatives.length > 1 && (
+											<button
+												type="button"
+												onClick={() => handleRemoveRepresentativeRow(index)}
+												className="absolute top-1 right-2 text-[9px] text-red-500 border border-red-200 bg-white px-2 py-0.5 rounded hover:bg-red-50 font-bold uppercase"
+											>
+												Remove
+											</button>
+										)}
+										<div>
+											<label className={labelStyle}>Representative Name</label>
+											<input
+												value={representative.representativeName}
+												onChange={(e) =>
+													handleRepresentativeRowChange(
+														index,
+														"representativeName",
+														e.target.value,
+													)
+												}
+												className={inputStyle}
+												placeholder="Witness Full Name"
+												required
+											/>
+										</div>
+										<div>
+											<label className={labelStyle}>Representative ID</label>
+											<input
+												value={representative.representativeIdentification}
+												onChange={(e) =>
+													handleRepresentativeRowChange(
+														index,
+														"representativeIdentification",
+														e.target.value,
+													)
+												}
+												className={inputStyle}
+												placeholder="Passport/ID Number"
+												required
+											/>
+										</div>
+										<div>
+											<label className={labelStyle}>Representative Email</label>
+											<input
+												value={representative.representativeEmail}
+												type="email"
+												onChange={(e) =>
+													handleRepresentativeRowChange(
+														index,
+														"representativeEmail",
+														e.target.value,
+													)
+												}
+												className={inputStyle}
+												placeholder="active@email.com"
+												required
+											/>
+										</div>
+									</div>
+								))}
+							</div>
+						</div>
+					</div>
+				</div>
+
+				{/* Submission Action Anchor */}
+				<footer className="mt-4 border-t pt-6">
 					<button
+						type="submit"
 						disabled={loading}
-						className="w-full bg-black text-white py-3 rounded font-bold uppercase tracking-widest hover:bg-gray-800 disabled:opacity-50 transition-all"
+						className="w-full bg-black text-white p-4 font-bold uppercase hover:bg-gray-800 disabled:opacity-50 transition-all shadow-md tracking-widest text-xs font-serif"
 					>
 						{loading
-							? "Saving..."
-							: id
-								? "Update Record"
-								: "Save Shore Tank Report"}
+							? "Processing Official Document Data..."
+							: "Submit Shore Tank Quantity Report"}
 					</button>
-				</div>
+					{error && (
+						<p className="text-red-600 text-center mt-4 text-xs font-bold uppercase tracking-wider font-serif">
+							{error}
+						</p>
+					)}
+				</footer>
 			</form>
 		</main>
 	);

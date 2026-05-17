@@ -1,17 +1,17 @@
 const express = require("express");
 const {
-	saveLetterOfProtestGeneral,
-	getLetterOfProtestGeneral,
-	getAllLetterOfProtestGenerals,
-	getEveryonesLetterOfProtestGenerals,
+	saveLetterOfProtestGeneralReport,
+	getAllLetterOfProtestGeneralReports,
+	getLetterOfProtestGeneralReport,
+	getEveryonesLetterOfProtestGeneralReports,
 } = require("../controllers/letterOfProtestGeneralController.js");
 const { verifyToken } = require("../utils/verifyUser.js");
 
 const router = express.Router();
 
-router.post("/save", verifyToken, saveLetterOfProtestGeneral);
-router.get("/getall", verifyToken, getAllLetterOfProtestGenerals);
-router.get("/get/:id", verifyToken, getLetterOfProtestGeneral);
-router.get("/geteveryones", verifyToken, getEveryonesLetterOfProtestGenerals);
+router.post("/save", verifyToken, saveLetterOfProtestGeneralReport);
+router.get("/getall", verifyToken, getAllLetterOfProtestGeneralReports);
+router.get("/get/:id", verifyToken, getLetterOfProtestGeneralReport);
+router.get("/geteveryones", getEveryonesLetterOfProtestGeneralReports);
 
 module.exports = router;

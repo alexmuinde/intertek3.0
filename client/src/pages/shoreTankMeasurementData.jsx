@@ -1,599 +1,712 @@
-import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
 import { useSelector } from "react-redux";
+import { useNavigate, useParams } from "react-router-dom";
 
 export default function ShoreTankMeasurementData() {
 	const { currentUser } = useSelector((state) => state.user);
-	const { id } = useParams();
 	const navigate = useNavigate();
+	const { id } = useParams();
 
-	const [formData, setFormData] = useState({
-		date: "",
-		installation: "",
-		tankNumber: "",
-		vessel: "",
-		account: "",
-		grade: "",
-		// Dynamic Tank Dip Records Array
-		tankMeasurements: [
-			{
-				tankNumberDetail: "",
-				overallDip: "",
-				productDip: "",
-				temperature: "",
-				time: "",
-			},
-		],
-		// Checkboxes
-		beforeDischarge: false,
-		afterDischarge: false,
-		upper: false,
-		middle: false,
-		lower: false,
-		running: false,
-		profile: false,
-		numberOfSamples: "",
-		// Reason checkboxes
-		reasonDensity: false,
-		reasonAnalysis: false,
-		reasonRetention: false,
-		remarks: "",
-		intertekInspector: "",
-		// Dynamic Representatives Array matching your SOF/Sealing layouts
-		representatives: [{ name: "", id: "", email: "" }],
-	});
-
+	const [error, setError] = useState(false);
 	const [loading, setLoading] = useState(false);
 
-	// General inputs
+	const [formData, setFormData] = useState({
+		userReference: currentUser._id,
+		dateOfReport: "",
+		installationName: "",
+		tankNumberHeader: "",
+		vesselName: "",
+		accountName: "",
+		cargoGrade: "",
+
+		// Parallel array lists initialized for multiple metric card tracks
+		tankNumbers: [""],
+		overallDips: [""],
+		productDips: [""],
+		temperatures: [""],
+		timesOfMeasurements: [""],
+
+		isBeforeDischarge: false,
+		isAfterDischarge: false,
+		isUpperSample: false,
+		isMiddleSample: false,
+		isLowerSample: false,
+		isRunningSample: false,
+		isProfileSample: false,
+		numberOfSamples: "",
+
+		isSamplingForDensity: false,
+		isSamplingForAnalysis: false,
+		isSamplingForRetention: false,
+
+		measurementRemarks: "",
+		intertekInspector: "",
+		representatives: [
+			{
+				representativeName: "",
+				representativeIdentification: "",
+				representativeEmail: "",
+			},
+		],
+	});
+
+	useEffect(() => {
+		if (id) {
+			const fetchReport = async () => {
+				setLoading(true);
+				try {
+					const res = await fetch(`/api/shoreTankMeasurementData/get/${id}`);
+					const data = await res.json();
+					if (data.success !== false) {
+						setFormData({
+							...data,
+							dateOfReport: data.dateOfReport
+								? data.dateOfReport.split("T")[0]
+								: "",
+						});
+					} else {
+						setError(data.message);
+					}
+				} catch (err) {
+					setError(true);
+				} finally {
+					setLoading(false);
+				}
+			};
+			fetchReport();
+		}
+	}, [id]);
+
+	const handleSubmit = async (e) => {
+		e.preventDefault();
+		setLoading(true);
+		setError(false);
+		try {
+			const body = id ? { ...formData, _id: id } : formData;
+			const res = await fetch("/api/shoreTankMeasurementData/save", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(body),
+			});
+			const data = await res.json();
+			if (data.success !== false) {
+				alert("Record Saved Successfully!");
+				if (!id && data._id) {
+					navigate(`/shoreTankMeasurementData/${data._id}`);
+				}
+			} else {
+				setError(data.message);
+			}
+		} catch (err) {
+			setError("Failed to establish server communication channels");
+		} finally {
+			setLoading(false);
+		}
+	};
+
 	const handleChange = (e) => {
-		const { id, type, checked, value } = e.target;
+		const { id, value, type, checked } = e.target;
 		setFormData({
 			...formData,
 			[id]: type === "checkbox" ? checked : value,
 		});
 	};
 
-	// --- DYNAMIC TANK MEASUREMENTS LOGIC ---
-	const handleMeasurementChange = (index, e) => {
-		const newMeasurements = [...formData.tankMeasurements];
-		newMeasurements[index][e.target.name] = e.target.value;
-		setFormData({ ...formData, tankMeasurements: newMeasurements });
-	};
-
-	const addMeasurement = () => {
+	// Parallel Arrays Row Appender Utility for Dip Tickets
+	const handleAddMeasurementRecord = () => {
 		setFormData({
 			...formData,
-			tankMeasurements: [
-				...formData.tankMeasurements,
+			tankNumbers: [...formData.tankNumbers, ""],
+			overallDips: [...formData.overallDips, ""],
+			productDips: [...formData.productDips, ""],
+			temperatures: [...formData.temperatures, ""],
+			timesOfMeasurements: [...formData.timesOfMeasurements, ""],
+		});
+	};
+
+	const handleMeasurementItemChange = (index, value, field) => {
+		const updatedList = [...formData[field]];
+		updatedList[index] = value;
+		setFormData({ ...formData, [field]: updatedList });
+	};
+
+	const handleRemoveMeasurementRecord = (index) => {
+		if (formData.tankNumbers.length > 1) {
+			setFormData({
+				...formData,
+				tankNumbers: formData.tankNumbers.filter((_, i) => i !== index),
+				overallDips: formData.overallDips.filter((_, i) => i !== index),
+				productDips: formData.productDips.filter((_, i) => i !== index),
+				temperatures: formData.temperatures.filter((_, i) => i !== index),
+				timesOfMeasurements: formData.timesOfMeasurements.filter(
+					(_, i) => i !== index,
+				),
+			});
+		}
+	};
+
+	// Grouped Representative Object Dynamic Array Handlers
+	const handleAddRepresentativeRow = () => {
+		setFormData({
+			...formData,
+			representatives: [
+				...formData.representatives,
 				{
-					tankNumberDetail: "",
-					overallDip: "",
-					productDip: "",
-					temperature: "",
-					time: "",
+					representativeName: "",
+					representativeIdentification: "",
+					representativeEmail: "",
 				},
 			],
 		});
 	};
 
-	const removeMeasurement = (index) => {
-		if (formData.tankMeasurements.length > 1) {
-			const newMeasurements = formData.tankMeasurements.filter(
-				(_, i) => i !== index,
-			);
-			setFormData({ ...formData, tankMeasurements: newMeasurements });
-		}
+	const handleRepresentativeRowChange = (index, field, value) => {
+		const updatedRepresentatives = [...formData.representatives];
+		updatedRepresentatives[index][field] = value;
+		setFormData({ ...formData, representatives: updatedRepresentatives });
 	};
 
-	// --- DYNAMIC REPRESENTATIVE LOGIC ---
-	const handleRepChange = (index, e) => {
-		const newReps = [...formData.representatives];
-		newReps[index][e.target.name] = e.target.value;
-		setFormData({ ...formData, representatives: newReps });
-	};
-
-	const addRep = () => {
-		setFormData({
-			...formData,
-			representatives: [
-				...formData.representatives,
-				{ name: "", id: "", email: "" },
-			],
-		});
-	};
-
-	const removeRep = (index) => {
+	const handleRemoveRepresentativeRow = (index) => {
 		if (formData.representatives.length > 1) {
-			const newReps = formData.representatives.filter((_, i) => i !== index);
-			setFormData({ ...formData, representatives: newReps });
-		}
-	};
-
-	useEffect(() => {
-		const fetchStatus = async () => {
-			if (!id) return;
-			try {
-				const res = await fetch(`/api/shoreTankMeasurementData/get/${id}`);
-				const data = await res.json();
-
-				if (data.success === false) {
-					console.error(data.message);
-					return;
-				}
-
-				// Format date strictly for HTML5 input field
-				const formattedData = {
-					...data,
-					date: data.date
-						? new Date(data.date).toISOString().split("T")[0]
-						: "",
-				};
-
-				setFormData(formattedData);
-			} catch (error) {
-				console.error("Fetch Error:", error);
-			}
-		};
-		fetchStatus();
-	}, [id]);
-
-	const handleSave = async () => {
-		if (!currentUser) return alert("You must be logged in to save!");
-		setLoading(true);
-		try {
-			const res = await fetch("/api/shoreTankMeasurementData/save", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					...formData,
-					userRef: currentUser._id,
-					...(id && { _id: id }),
-				}),
+			setFormData({
+				...formData,
+				representatives: formData.representatives.filter((_, i) => i !== index),
 			});
-			const data = await res.json();
-
-			if (data.success !== false) {
-				alert("Shore Tank Measurement Record Saved!");
-				if (!id && data._id) {
-					navigate(`/shoreTankMeasurementData/${data._id}`);
-				}
-			} else {
-				alert(data.message || "Failed to save");
-			}
-		} catch (err) {
-			console.error("Save Error:", err);
-		} finally {
-			setLoading(false);
 		}
 	};
+
+	const inputStyle =
+		"w-full bg-[#f8f6f6] p-2 border-b border-black outline-none transition-all hover:shadow-[inset_0_2px_5px_rgba(0,0,0,0.19)] focus:border focus:shadow-[2px_2px_rgba(0,0,0,0.19)] text-xs font-serif font-medium";
+	const labelStyle =
+		"block text-[11px] pl-1 mb-1 text-gray-700 font-bold tracking-wide uppercase font-serif";
+	const checkboxContainerStyle =
+		"flex items-center gap-3 p-1.5 hover:bg-gray-50 border-b border-gray-100";
 
 	return (
-		<main className="p-4 max-w-7xl mx-auto font-serif">
-			<h1 className="text-2xl font-bold text-center mb-6 uppercase tracking-widest border-b-2 border-black pb-2">
-				Shore Tank Measurement Data (Dip Ticket)
-			</h1>
+		<main className="p-4 max-w-7xl mx-auto font-serif bg-white text-gray-900">
+			<header className="mb-4 border-b-2 border-black pb-2">
+				<h1 className="text-base font-bold text-center uppercase tracking-widest">
+					SHORE TANK MEASUREMENT DATA (DIP TICKET)
+				</h1>
+			</header>
 
-			<div className="flex flex-col lg:flex-row gap-8">
-				{/* LEFT COLUMN: Installation details and Tank dips */}
-				<div className="flex-1 border-b-2 lg:border-b-0 lg:border-r-2 border-gray-200 pr-0 lg:pr-8">
-					<div className="grid grid-cols-2 gap-4 mb-6">
-						<div>
-							<label className="text-xs font-bold uppercase text-gray-500">
-								Date
-							</label>
-							<input
-								type="date"
-								id="date"
-								value={formData.date}
-								onChange={handleChange}
-								className="w-full border-b border-black outline-none p-1"
-							/>
+			<form onSubmit={handleSubmit} className="flex flex-col gap-8">
+				{/* Side-by-Side Flex Layout Structure for Desktop Split Display */}
+				<div className="flex flex-col lg:flex-row gap-10">
+					{/* LEFT HALF: Document Logistics Header & Multi Measurement Row Entries */}
+					<div className="flex-1 flex flex-col gap-6">
+						<div className="bg-gray-100 p-2 border-l-4 border-black">
+							<h2 className="text-xs font-bold uppercase tracking-wider">
+								Logistics Summary Context
+							</h2>
 						</div>
-						<div>
-							<label className="text-xs font-bold uppercase text-gray-500">
-								Installation
-							</label>
-							<input
-								type="text"
-								id="installation"
-								value={formData.installation}
-								onChange={handleChange}
-								className="w-full border-b border-black outline-none p-1 focus:bg-gray-50"
-							/>
-						</div>
-						<div>
-							<label className="text-xs font-bold uppercase text-gray-500">
-								Tank Number
-							</label>
-							<input
-								type="text"
-								id="tankNumber"
-								value={formData.tankNumber}
-								onChange={handleChange}
-								className="w-full border-b border-black outline-none p-1 focus:bg-gray-50"
-							/>
-						</div>
-						<div>
-							<label className="text-xs font-bold uppercase text-gray-500">
-								Vessel
-							</label>
-							<input
-								type="text"
-								id="vessel"
-								value={formData.vessel}
-								onChange={handleChange}
-								className="w-full border-b border-black outline-none p-1 focus:bg-gray-50"
-							/>
-						</div>
-						<div className="col-span-2">
-							<label className="text-xs font-bold uppercase text-gray-500">
-								Account
-							</label>
-							<input
-								type="text"
-								id="account"
-								value={formData.account}
-								onChange={handleChange}
-								className="w-full border-b border-black outline-none p-1 focus:bg-gray-50"
-							/>
-						</div>
-						<div className="col-span-2">
-							<label className="text-xs font-bold uppercase text-gray-500">
-								Grade
-							</label>
-							<input
-								type="text"
-								id="grade"
-								value={formData.grade}
-								onChange={handleChange}
-								className="w-full border-b border-black outline-none p-1 focus:bg-gray-50"
-							/>
-						</div>
-					</div>
 
-					<div className="flex justify-between items-center bg-black text-white p-1 mb-4">
-						<h2 className="text-sm font-bold uppercase">
-							Tank Measurement Details
-						</h2>
-						<button
-							type="button"
-							onClick={addMeasurement}
-							className="text-[10px] bg-blue-600 text-white px-2 py-0.5 rounded hover:bg-blue-700 font-bold uppercase"
-						>
-							+ Add Tank Measurement
-						</button>
-					</div>
-
-					{formData.tankMeasurements.map((measurement, index) => (
-						<div
-							key={index}
-							className="p-3 bg-gray-50 rounded-lg relative border border-gray-200 mb-4"
-						>
-							{index > 0 && (
-								<button
-									type="button"
-									onClick={() => removeMeasurement(index)}
-									className="absolute top-1 right-2 text-red-500 font-bold text-lg hover:text-red-700"
-								>
-									&times;
-								</button>
-							)}
-
-							<div className="space-y-4">
-								<div className="grid grid-cols-2 gap-4">
-									<div>
-										<label className="text-[10px] font-bold text-gray-400 uppercase">
-											Tank Number
-										</label>
-										<input
-											type="text"
-											name="tankNumberDetail"
-											value={measurement.tankNumberDetail || ""}
-											onChange={(e) => handleMeasurementChange(index, e)}
-											className="w-full border-b border-gray-300 bg-transparent outline-none p-1 text-sm"
-										/>
-									</div>
-									<div>
-										<label className="text-[10px] font-bold text-gray-400 uppercase">
-											Overall Dip
-										</label>
-										<input
-											type="text"
-											name="overallDip"
-											value={measurement.overallDip || ""}
-											onChange={(e) => handleMeasurementChange(index, e)}
-											className="w-full border-b border-gray-300 bg-transparent outline-none p-1 text-sm"
-										/>
-									</div>
-								</div>
-
-								<div className="grid grid-cols-3 gap-2">
-									<div>
-										<label className="text-[10px] font-bold text-gray-400 uppercase">
-											Product Dip
-										</label>
-										<input
-											type="text"
-											name="productDip"
-											value={measurement.productDip || ""}
-											onChange={(e) => handleMeasurementChange(index, e)}
-											className="w-full border-b border-gray-300 bg-transparent outline-none p-1 text-sm"
-										/>
-									</div>
-									<div>
-										<label className="text-[10px] font-bold text-gray-400 uppercase">
-											Temperature
-										</label>
-										<input
-											type="text"
-											name="temperature"
-											value={measurement.temperature || ""}
-											onChange={(e) => handleMeasurementChange(index, e)}
-											className="w-full border-b border-gray-300 bg-transparent outline-none p-1 text-sm"
-										/>
-									</div>
-									<div>
-										<label className="text-[10px] font-bold text-gray-400 uppercase">
-											Time
-										</label>
-										<input
-											type="time"
-											name="time"
-											value={measurement.time || ""}
-											onChange={(e) => handleMeasurementChange(index, e)}
-											className="w-full border-b border-gray-300 bg-transparent outline-none p-1 text-sm"
-										/>
-									</div>
-								</div>
+						<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+							<div>
+								<label className={labelStyle}>Date of Report</label>
+								<input
+									onChange={handleChange}
+									id="dateOfReport"
+									className={inputStyle}
+									type="date"
+									required
+									value={formData.dateOfReport || ""}
+								/>
 							</div>
-						</div>
-					))}
-				</div>
-
-				{/* RIGHT COLUMN: Samples Checklist, Remarks, Authorization */}
-				<div className="flex-1 lg:pl-8 flex flex-col justify-between">
-					<div className="space-y-6">
-						<h2 className="text-sm font-bold bg-black text-white p-1 uppercase">
-							Sampling Matrix Checklist
-						</h2>
-
-						<div className="grid grid-cols-2 gap-3 p-3 bg-gray-50 rounded border border-gray-100">
-							<label className="flex items-center gap-2 text-xs uppercase cursor-pointer">
+							<div>
+								<label className={labelStyle}>Installation</label>
 								<input
-									type="checkbox"
-									id="beforeDischarge"
-									checked={formData.beforeDischarge}
 									onChange={handleChange}
-									className="accent-black"
+									id="installationName"
+									className={inputStyle}
+									type="text"
+									required
+									value={formData.installationName || ""}
 								/>
-								Before Discharge
-							</label>
-							<label className="flex items-center gap-2 text-xs uppercase cursor-pointer">
+							</div>
+							<div>
+								<label className={labelStyle}>Tank Number Header</label>
 								<input
-									type="checkbox"
-									id="afterDischarge"
-									checked={formData.afterDischarge}
 									onChange={handleChange}
-									className="accent-black"
+									id="tankNumberHeader"
+									className={inputStyle}
+									type="text"
+									required
+									value={formData.tankNumberHeader || ""}
 								/>
-								After Discharge
-							</label>
-							<label className="flex items-center gap-2 text-xs uppercase cursor-pointer">
+							</div>
+							<div>
+								<label className={labelStyle}>Vessel Name</label>
 								<input
-									type="checkbox"
-									id="upper"
-									checked={formData.upper}
 									onChange={handleChange}
-									className="accent-black"
+									id="vesselName"
+									className={inputStyle}
+									type="text"
+									required
+									value={formData.vesselName || ""}
 								/>
-								Upper
-							</label>
-							<label className="flex items-center gap-2 text-xs uppercase cursor-pointer">
+							</div>
+							<div>
+								<label className={labelStyle}>Account</label>
 								<input
-									type="checkbox"
-									id="middle"
-									checked={formData.middle}
 									onChange={handleChange}
-									className="accent-black"
+									id="accountName"
+									className={inputStyle}
+									type="text"
+									required
+									value={formData.accountName || ""}
 								/>
-								Middle
-							</label>
-							<label className="flex items-center gap-2 text-xs uppercase cursor-pointer">
+							</div>
+							<div>
+								<label className={labelStyle}>Grade</label>
 								<input
-									type="checkbox"
-									id="lower"
-									checked={formData.lower}
 									onChange={handleChange}
-									className="accent-black"
+									id="cargoGrade"
+									className={inputStyle}
+									type="text"
+									required
+									value={formData.cargoGrade || ""}
 								/>
-								Lower
-							</label>
-							<label className="flex items-center gap-2 text-xs uppercase cursor-pointer">
-								<input
-									type="checkbox"
-									id="running"
-									checked={formData.running}
-									onChange={handleChange}
-									className="accent-black"
-								/>
-								Running
-							</label>
-							<label className="flex items-center gap-2 text-xs uppercase cursor-pointer col-span-2">
-								<input
-									type="checkbox"
-									id="profile"
-									checked={formData.profile}
-									onChange={handleChange}
-									className="accent-black"
-								/>
-								Profile
-							</label>
-						</div>
-
-						<div>
-							<label className="text-xs font-bold uppercase text-gray-500">
-								Number of Samples
-							</label>
-							<input
-								type="text"
-								id="numberOfSamples"
-								value={formData.numberOfSamples}
-								onChange={handleChange}
-								className="w-full border-b border-black outline-none p-1 focus:bg-gray-50"
-							/>
-						</div>
-
-						<div>
-							<h3 className="text-xs font-bold uppercase text-gray-500 mb-2">
-								Reason for Sampling:
-							</h3>
-							<div className="flex gap-4 p-2 bg-gray-50 rounded border border-gray-100">
-								<label className="flex items-center gap-1 text-xs uppercase cursor-pointer">
-									<input
-										type="checkbox"
-										id="reasonDensity"
-										checked={formData.reasonDensity}
-										onChange={handleChange}
-										className="accent-black"
-									/>
-									Density
-								</label>
-								<label className="flex items-center gap-1 text-xs uppercase cursor-pointer">
-									<input
-										type="checkbox"
-										id="reasonAnalysis"
-										checked={formData.reasonAnalysis}
-										onChange={handleChange}
-										className="accent-black"
-									/>
-									Analysis
-								</label>
-								<label className="flex items-center gap-1 text-xs uppercase cursor-pointer">
-									<input
-										type="checkbox"
-										id="reasonRetention"
-										checked={formData.reasonRetention}
-										onChange={handleChange}
-										className="accent-black"
-									/>
-									Retention
-								</label>
 							</div>
 						</div>
 
-						<div>
-							<label className="text-xs font-bold uppercase text-gray-500">
-								Remarks
-							</label>
-							<textarea
-								id="remarks"
-								value={formData.remarks}
-								onChange={handleChange}
-								rows="2"
-								className="w-full border border-black outline-none p-2 focus:bg-gray-50 font-sans text-sm mt-1"
-							/>
-						</div>
-
-						<h2 className="text-sm font-bold border-b border-black uppercase">
-							Authorization
-						</h2>
-
-						<div>
-							<label className="text-xs font-bold text-gray-400 uppercase">
-								Intertek Inspector Name
-							</label>
-							<input
-								type="text"
-								id="intertekInspector"
-								value={formData.intertekInspector}
-								onChange={handleChange}
-								placeholder="Full Name"
-								className="w-full border-b border-gray-300 outline-none p-2 focus:bg-gray-50 transition-all"
-							/>
-						</div>
-
-						<div className="space-y-4">
-							<div className="flex justify-between items-center border-b border-black">
-								<h2 className="text-sm font-bold uppercase">Representatives</h2>
+						{/* Dynamic Interactive Metrics Row Component Track */}
+						<div className="flex flex-col gap-4 mt-2">
+							<div className="flex justify-between items-center bg-gray-100 p-2 border-l-4 border-blue-800">
+								<h2 className="text-xs font-bold uppercase tracking-wider">
+									Tank Dip Metrics Log Entries
+								</h2>
 								<button
 									type="button"
-									onClick={addRep}
-									className="text-[10px] bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700 font-bold"
+									onClick={handleAddMeasurementRecord}
+									className="text-[10px] bg-black text-white px-3 py-1 font-bold rounded hover:bg-gray-800 transition-all uppercase"
 								>
-									+ ADD REP
+									+ Add Measurement Row
 								</button>
 							</div>
 
-							{formData.representatives.map((rep, index) => (
-								<div
-									key={index}
-									className="p-3 bg-gray-50 rounded-lg relative border border-gray-100 mb-2"
-								>
-									{index > 0 && (
-										<button
-											type="button"
-											onClick={() => removeRep(index)}
-											className="absolute top-1 right-2 text-red-500 font-bold text-lg hover:text-red-700"
-										>
-											&times;
-										</button>
-									)}
-
-									<div className="space-y-3">
+							<div className="flex flex-col gap-6 max-h-[500px] overflow-y-auto pr-1">
+								{formData.tankNumbers.map((_, index) => (
+									<div
+										key={index}
+										className="grid grid-cols-2 md:grid-cols-5 gap-3 bg-gray-50/60 p-3 border border-gray-200 rounded relative pt-8"
+									>
+										<span className="absolute top-1 left-2 text-[10px] font-bold bg-blue-800 text-white px-2 py-0.5 rounded">
+											Tank Log #{index + 1}
+										</span>
+										{formData.tankNumbers.length > 1 && (
+											<button
+												type="button"
+												onClick={() => handleRemoveMeasurementRecord(index)}
+												className="absolute top-1 right-2 text-[10px] border border-red-300 text-red-500 bg-white px-2 py-0.5 rounded hover:bg-red-50 font-bold uppercase"
+											>
+												Delete
+											</button>
+										)}
 										<div>
-											<label className="text-[10px] font-bold text-gray-400 uppercase">
-												Representative Name
-											</label>
+											<label className={labelStyle}>Tank No.</label>
 											<input
+												value={formData.tankNumbers[index]}
+												onChange={(e) =>
+													handleMeasurementItemChange(
+														index,
+														e.target.value,
+														"tankNumbers",
+													)
+												}
+												className={inputStyle}
 												type="text"
-												name="name"
-												value={rep.name || ""}
-												onChange={(e) => handleRepChange(index, e)}
-												className="w-full border-b border-gray-300 bg-transparent outline-none p-1 text-xs"
+												required
 											/>
 										</div>
-										<div className="grid grid-cols-2 gap-4">
-											<div>
-												<label className="text-[10px] font-bold text-gray-400 uppercase">
-													ID Number
-												</label>
-												<input
-													type="text"
-													name="id"
-													value={rep.id || ""}
-													onChange={(e) => handleRepChange(index, e)}
-													className="w-full border-b border-gray-300 bg-transparent outline-none p-1 text-xs"
-												/>
-											</div>
-											<div>
-												<label className="text-[10px] font-bold text-gray-400 uppercase">
-													Email Address
-												</label>
-												<input
-													type="email"
-													name="email"
-													value={rep.email || ""}
-													onChange={(e) => handleRepChange(index, e)}
-													className="w-full border-b border-gray-300 bg-transparent outline-none p-1 text-xs"
-												/>
-											</div>
+										<div>
+											<label className={labelStyle}>Overall Dip</label>
+											<input
+												value={formData.overallDips[index]}
+												onChange={(e) =>
+													handleMeasurementItemChange(
+														index,
+														e.target.value,
+														"overallDips",
+													)
+												}
+												className={inputStyle}
+												type="number"
+												required
+											/>
+										</div>
+										<div>
+											<label className={labelStyle}>Product Dip</label>
+											<input
+												value={formData.productDips[index]}
+												onChange={(e) =>
+													handleMeasurementItemChange(
+														index,
+														e.target.value,
+														"productDips",
+													)
+												}
+												className={inputStyle}
+												type="number"
+												required
+											/>
+										</div>
+										<div>
+											<label className={labelStyle}>Temperature (°C)</label>
+											<input
+												value={formData.temperatures[index]}
+												onChange={(e) =>
+													handleMeasurementItemChange(
+														index,
+														e.target.value,
+														"temperatures",
+													)
+												}
+												className={inputStyle}
+												type="number"
+												step="any"
+												required
+											/>
+										</div>
+										<div>
+											<label className={labelStyle}>Time</label>
+											<input
+												value={formData.timesOfMeasurements[index]}
+												onChange={(e) =>
+													handleMeasurementItemChange(
+														index,
+														e.target.value,
+														"timesOfMeasurements",
+													)
+												}
+												className={inputStyle}
+												type="time"
+												required
+											/>
 										</div>
 									</div>
-								</div>
-							))}
+								))}
+							</div>
 						</div>
 					</div>
 
-					<button
-						onClick={handleSave}
-						disabled={loading}
-						className="w-full mt-8 bg-black text-white py-3 rounded font-bold hover:bg-gray-800 transition-all uppercase tracking-widest"
-					>
-						{loading ? "Saving Document..." : "Save Measurement Record"}
-					</button>
+					{/* RIGHT HALF: Sampling Checkboxes, Reasons Matrix, and Witnesses Object List */}
+					<div className="flex-1 flex flex-col gap-6 border-t lg:border-t-0 lg:border-l-2 border-gray-200 lg:pl-10 pt-6 lg:pt-0">
+						<div className="bg-gray-100 p-2 border-l-4 border-black">
+							<h2 className="text-xs font-bold uppercase tracking-wider">
+								Sampling Context Specifications
+							</h2>
+						</div>
+
+						{/* Sampling Checklist Split Grid Array */}
+						<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+							<div className="flex flex-col gap-1.5 bg-gray-50 p-3 border border-gray-100 rounded">
+								<span className="text-[10px] font-bold text-gray-400 font-serif uppercase tracking-wider mb-1">
+									Sampling Timeline & Dips
+								</span>
+								<div className={checkboxContainerStyle}>
+									<input
+										onChange={handleChange}
+										type="checkbox"
+										id="isBeforeDischarge"
+										className="w-4 h-4 cursor-pointer"
+										checked={formData.isBeforeDischarge}
+									/>
+									<label
+										htmlFor="isBeforeDischarge"
+										className="text-[11px] cursor-pointer font-medium"
+									>
+										Before Discharge
+									</label>
+								</div>
+								<div className={checkboxContainerStyle}>
+									<input
+										onChange={handleChange}
+										type="checkbox"
+										id="isAfterDischarge"
+										className="w-4 h-4 cursor-pointer"
+										checked={formData.isAfterDischarge}
+									/>
+									<label
+										htmlFor="isAfterDischarge"
+										className="text-[11px] cursor-pointer font-medium"
+									>
+										After Discharge
+									</label>
+								</div>
+								<div className={checkboxContainerStyle}>
+									<input
+										onChange={handleChange}
+										type="checkbox"
+										id="isUpperSample"
+										className="w-4 h-4 cursor-pointer"
+										checked={formData.isUpperSample}
+									/>
+									<label
+										htmlFor="isUpperSample"
+										className="text-[11px] cursor-pointer font-medium"
+									>
+										Upper
+									</label>
+								</div>
+								<div className={checkboxContainerStyle}>
+									<input
+										onChange={handleChange}
+										type="checkbox"
+										id="isMiddleSample"
+										className="w-4 h-4 cursor-pointer"
+										checked={formData.isMiddleSample}
+									/>
+									<label
+										htmlFor="isMiddleSample"
+										className="text-[11px] cursor-pointer font-medium"
+									>
+										Middle
+									</label>
+								</div>
+								<div className={checkboxContainerStyle}>
+									<input
+										onChange={handleChange}
+										type="checkbox"
+										id="isLowerSample"
+										className="w-4 h-4 cursor-pointer"
+										checked={formData.isLowerSample}
+									/>
+									<label
+										htmlFor="isLowerSample"
+										className="text-[11px] cursor-pointer font-medium"
+									>
+										Lower
+									</label>
+								</div>
+								<div className={checkboxContainerStyle}>
+									<input
+										onChange={handleChange}
+										type="checkbox"
+										id="isRunningSample"
+										className="w-4 h-4 cursor-pointer"
+										checked={formData.isRunningSample}
+									/>
+									<label
+										htmlFor="isRunningSample"
+										className="text-[11px] cursor-pointer font-medium"
+									>
+										Running
+									</label>
+								</div>
+								<div className={checkboxContainerStyle}>
+									<input
+										onChange={handleChange}
+										type="checkbox"
+										id="isProfileSample"
+										className="w-4 h-4 cursor-pointer"
+										checked={formData.isProfileSample}
+									/>
+									<label
+										htmlFor="isProfileSample"
+										className="text-[11px] cursor-pointer font-medium"
+									>
+										Profile
+									</label>
+								</div>
+								<div className="pt-2">
+									<label className={labelStyle}>Number of Samples</label>
+									<input
+										onChange={handleChange}
+										id="numberOfSamples"
+										className={inputStyle}
+										type="number"
+										required
+										value={formData.numberOfSamples || ""}
+									/>
+								</div>
+							</div>
+
+							<div className="flex flex-col gap-4">
+								<div className="flex flex-col gap-1.5 bg-gray-50 p-3 border border-gray-100 rounded">
+									<span className="text-[10px] font-bold text-gray-400 font-serif uppercase tracking-wider mb-1">
+										Reason for Sampling
+									</span>
+									<div className={checkboxContainerStyle}>
+										<input
+											onChange={handleChange}
+											type="checkbox"
+											id="isSamplingForDensity"
+											className="w-4 h-4 cursor-pointer"
+											checked={formData.isSamplingForDensity}
+										/>
+										<label
+											htmlFor="isSamplingForDensity"
+											className="text-[11px] cursor-pointer font-medium"
+										>
+											Density
+										</label>
+									</div>
+									<div className={checkboxContainerStyle}>
+										<input
+											onChange={handleChange}
+											type="checkbox"
+											id="isSamplingForAnalysis"
+											className="w-4 h-4 cursor-pointer"
+											checked={formData.isSamplingForAnalysis}
+										/>
+										<label
+											htmlFor="isSamplingForAnalysis"
+											className="text-[11px] cursor-pointer font-medium"
+										>
+											Analysis
+										</label>
+									</div>
+									<div className={checkboxContainerStyle}>
+										<input
+											onChange={handleChange}
+											type="checkbox"
+											id="isSamplingForRetention"
+											className="w-4 h-4 cursor-pointer"
+											checked={formData.isSamplingForRetention}
+										/>
+										<label
+											htmlFor="isSamplingForRetention"
+											className="text-[11px] cursor-pointer font-medium"
+										>
+											Retention
+										</label>
+									</div>
+								</div>
+
+								<div>
+									<label className={labelStyle}>Measurement Remarks</label>
+									<input
+										onChange={handleChange}
+										id="measurementRemarks"
+										className={inputStyle}
+										type="text"
+										required
+										value={formData.measurementRemarks || ""}
+									/>
+								</div>
+								<div>
+									<label className={labelStyle}>Intertek Inspector Name</label>
+									<input
+										onChange={handleChange}
+										id="intertekInspector"
+										className={inputStyle}
+										type="text"
+										placeholder="Full Operational Inspector Name"
+										required
+										value={formData.intertekInspector || ""}
+									/>
+								</div>
+							</div>
+						</div>
+
+						{/* Grouped Dynamic Witness List Container */}
+						<div className="border-t border-gray-100 pt-4 space-y-4">
+							<div className="flex justify-between items-center bg-gray-50 p-2 border-l-4 border-purple-800">
+								<h3 className="text-xs font-bold uppercase tracking-wider font-serif">
+									Witness Representatives Authentication
+								</h3>
+								<button
+									type="button"
+									onClick={handleAddRepresentativeRow}
+									className="text-[10px] bg-black text-white px-3 py-1 font-bold rounded uppercase hover:bg-gray-800 transition-all"
+								>
+									+ Add Representative
+								</button>
+							</div>
+
+							<div className="flex flex-col gap-4 max-h-[300px] overflow-y-auto pr-1">
+								{formData.representatives.map((representative, index) => (
+									<div
+										key={index}
+										className="grid grid-cols-1 md:grid-cols-3 gap-3 bg-gray-50 p-3 border border-gray-200 rounded relative pt-8"
+									>
+										<span className="absolute top-1 left-2 text-[9px] font-bold bg-purple-800 text-white px-2 py-0.5 rounded">
+											Witness Profile #{index + 1}
+										</span>
+										{formData.representatives.length > 1 && (
+											<button
+												type="button"
+												onClick={() => handleRemoveRepresentativeRow(index)}
+												className="absolute top-1 right-2 text-[9px] text-red-500 border border-red-200 bg-white px-2 py-0.5 rounded hover:bg-red-50 font-bold uppercase"
+											>
+												Remove
+											</button>
+										)}
+										<div>
+											<label className={labelStyle}>Representative Name</label>
+											<input
+												value={representative.representativeName}
+												onChange={(e) =>
+													handleRepresentativeRowChange(
+														index,
+														"representativeName",
+														e.target.value,
+													)
+												}
+												className={inputStyle}
+												placeholder="Witness Full Name"
+												required
+											/>
+										</div>
+										<div>
+											<label className={labelStyle}>Representative ID</label>
+											<input
+												value={representative.representativeIdentification}
+												onChange={(e) =>
+													handleRepresentativeRowChange(
+														index,
+														"representativeIdentification",
+														e.target.value,
+													)
+												}
+												className={inputStyle}
+												placeholder="Passport/ID Number"
+												required
+											/>
+										</div>
+										<div>
+											<label className={labelStyle}>Representative Email</label>
+											<input
+												value={representative.representativeEmail}
+												type="email"
+												onChange={(e) =>
+													handleRepresentativeRowChange(
+														index,
+														"representativeEmail",
+														e.target.value,
+													)
+												}
+												className={inputStyle}
+												placeholder="active@email.com"
+												required
+											/>
+										</div>
+									</div>
+								))}
+							</div>
+						</div>
+					</div>
 				</div>
-			</div>
+
+				{/* Submission Action Anchor */}
+				<footer className="mt-4 border-t pt-6">
+					<button
+						type="submit"
+						disabled={loading}
+						className="w-full bg-black text-white p-4 font-bold uppercase hover:bg-gray-800 disabled:opacity-50 transition-all shadow-md tracking-widest text-xs font-serif"
+					>
+						{loading
+							? "Processing Official Document Data..."
+							: "Submit Shore Tank Measurement Data"}
+					</button>
+					{error && (
+						<p className="text-red-600 text-center mt-4 text-xs font-bold uppercase tracking-wider font-serif">
+							{error}
+						</p>
+					)}
+				</footer>
+			</form>
 		</main>
 	);
 }
