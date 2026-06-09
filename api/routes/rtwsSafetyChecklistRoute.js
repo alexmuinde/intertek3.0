@@ -1,0 +1,17 @@
+const express = require("express");
+const {
+	saveRtwsSafetyChecklistReport,
+	getAllRtwsSafetyChecklistReports,
+	getRtwsSafetyChecklistReport,
+	getEveryonesRtwsSafetyChecklistReports,
+} = require("../controllers/rtwsSafetyChecklistController.js");
+const { verifyToken } = require("../utils/verifyUser.js");
+
+const router = express.Router();
+
+router.post("/save", verifyToken, saveRtwsSafetyChecklistReport);
+router.get("/getall", verifyToken, getAllRtwsSafetyChecklistReports);
+router.get("/get/:id", verifyToken, getRtwsSafetyChecklistReport);
+router.get("/geteveryones", getEveryonesRtwsSafetyChecklistReports);
+
+module.exports = router;
