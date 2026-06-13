@@ -1,23 +1,48 @@
 {
-  "name": "intertek3.0",
+  "name": "intertek-unified",
+  "private": true,
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "type": "commonjs",
+  "type": "module",
   "scripts": {
-    "dev": "nodemon api/index.js",
-    "start": "node api/index.js"
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:server": "nodemon api/index.js",
+    "dev:client": "npm run dev --prefix client",
+    "build": "npm run build --prefix client -- --outDir ../dist",
+    "preview": "npm run preview --prefix client"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
+    "@reduxjs/toolkit": "^2.11.2",
+    "@tailwindcss/vite": "^4.2.4",
+    "firebase": "^12.12.1",
+    "lucide-react": "^1.14.0",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "react-icons": "^5.6.0",
+    "react-redux": "^9.2.0",
+    "react-router-dom": "^7.14.2",
+    "redux-persist": "^6.0.0",
+    "tailwindcss": "^4.2.4",
     "bcryptjs": "^3.0.3",
     "cookie-parser": "^1.4.7",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
-    "mongoose": "^9.5.0",
-    "nodemon": "^3.1.14"
+    "mongoose": "^9.5.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.29.0",
+    "@eslint/js": "^10.0.1",
+    "@rolldown/plugin-babel": "^0.2.3",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
+    "babel-plugin-react-compiler": "^1.0.0",
+    "concurrently": "^8.2.2",
+    "eslint": "^10.2.1",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "globals": "^17.5.0",
+    "nodemon": "^3.1.4",
+    "vite": "^8.0.10"
   }
 }
