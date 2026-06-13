@@ -4,12 +4,12 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
-    "dev:server": "nodemon api/index.js",
-    "dev:client": "npm run dev --prefix client",
-    "build": "vite build --root client --outDir ../dist",
-    "preview": "npm run preview --prefix client"
-  },
+  "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+  "dev:server": "nodemon api/index.js",
+  "dev:client": "npm run dev --prefix client",
+  "build": "vite build client --outDir dist",
+  "preview": "npm run preview --prefix client"
+},
   "dependencies": {
     "@reduxjs/toolkit": "^2.11.2",
     "@tailwindcss/vite": "^4.2.4",
