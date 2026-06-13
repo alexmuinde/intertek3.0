@@ -3,260 +3,290 @@ import { useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
 
 export default function NoticeOfApparentDiscrepancy() {
-	const { currentUser } = useSelector((state) => state.user);
-	const navigate = useNavigate();
-	const { id } = useParams();
+	  const { currentUser } = useSelector((state) => state.user);
+  const navigate = useNavigate();
+  const { id } = useParams();
 
-	const [error, setError] = useState(false);
-	const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [canEdit, setCanEdit] = useState(true); // Toggles view vs write configuration settings
 
-	const [formData, setFormData] = useState({
-		userReference: currentUser._id,
-		recipientName: "",
-		vesselName: "",
-		dateOfReport: "",
-		cargoGrade: "",
-		portName: "",
+    const [formData, setFormData] = useState({
+    userReference: currentUser?._id,
+    recipientName: "",
+    vesselName: "",
+    dateOfReport: "",
+    cargoGrade: "",
+    portName: "",
 
-		// Section 1 Array States
-		billOfLadingFigures: [""],
-		shipsFiguresAtDischargePort: [""],
-		billOfLadingMetricTonsDifferences: [0],
-		billOfLadingPercentageDifferences: [0],
+    // Section 1 Array States
+    billOfLadingFigures: [""],
+    shipsFiguresAtDischargePort: [""],
+    billOfLadingMetricTonsDifferences:[0],
+    billOfLadingPercentageDifferences:[0],
 
-		// Section 2 Array States
-		loadPortFigures: [""],
-		shipsFiguresAtMombasa: [""],
-		loadPortMetricTonsDifferences: [0],
-		loadPortPercentageDifferences: [0],
+    // Section 2 Array States
+    loadPortFigures: [""],
+    shipsFiguresAtMombasa: [""],
+    loadPortMetricTonsDifferences:[0],
+    loadPortPercentageDifferences:[0],
 
-		intertekInspector: "",
-		representatives: [
-			{
-				representativeName: "",
-				representativeIdentification: "",
-				representativeEmail: "",
-			},
-		],
-	});
+    intertekInspector: "",
+    representatives: [
+      {
+        representativeName: "",
+        representativeIdentification: "",
+        representativeEmail: "",
+      },
+    ],
+  });
 
-	// --- DYNAMIC RUNTIME MATHEMATICAL CALCULATIONS ENGINE ---
-	useEffect(() => {
-		// Calculate Section 1: Bill of Lading differences
-		const updatedBillOfLadingDiffs = formData.billOfLadingFigures.map(
-			(blVal, index) => {
-				const bl = parseFloat(blVal);
-				const shipDisch = parseFloat(
-					formData.shipsFiguresAtDischargePort[index],
-				);
-				if (bl && shipDisch) {
-					return parseFloat(Math.abs(bl - shipDisch).toFixed(3));
-				}
-				return 0;
-			},
-		);
 
-		const updatedBillOfLadingPctDiffs = formData.billOfLadingFigures.map(
-			(blVal, index) => {
-				const bl = parseFloat(blVal);
-				const diff = updatedBillOfLadingDiffs[index];
-				if (bl && bl !== 0 && diff) {
-					return parseFloat(((diff / bl) * 100).toFixed(3));
-				}
-				return 0;
-			},
-		);
+  // --- DYNAMIC RUNTIME MATHEMATICAL CALCULATIONS ENGINE ---
+  useEffect(() => {
+    // Calculate Section 1: Bill of Lading differences
+    const updatedBillOfLadingDiffs = formData.billOfLadingFigures.map(
+      (blVal, index) => {
+        const bl = parseFloat(blVal);
+        const shipDisch = parseFloat(
+          formData.shipsFiguresAtDischargePort[index],
+        );
+        if (bl && shipDisch) {
+          return parseFloat(Math.abs(bl - shipDisch).toFixed(3));
+        }
+        return 0;
+      },
+    );
 
-		// Calculate Section 2: Load Port differences
-		const updatedLoadPortDiffs = formData.loadPortFigures.map(
-			(lpVal, index) => {
-				const lp = parseFloat(lpVal);
-				const shipMomb = parseFloat(formData.shipsFiguresAtMombasa[index]);
-				if (lp && shipMomb) {
-					return parseFloat(Math.abs(lp - shipMomb).toFixed(3));
-				}
-				return 0;
-			},
-		);
+    const updatedBillOfLadingPctDiffs = formData.billOfLadingFigures.map(
+      (blVal, index) => {
+        const bl = parseFloat(blVal);
+        const diff = updatedBillOfLadingDiffs[index];
+        if (bl && bl !== 0 && diff) {
+          return parseFloat(((diff / bl) * 100).toFixed(3));
+        }
+        return 0;
+      },
+    );
 
-		const updatedLoadPortPctDiffs = formData.loadPortFigures.map(
-			(lpVal, index) => {
-				const lp = parseFloat(lpVal);
-				const diff = updatedLoadPortDiffs[index];
-				if (lp && lp !== 0 && diff) {
-					return parseFloat(((diff / lp) * 100).toFixed(3));
-				}
-				return 0;
-			},
-		);
+    // Calculate Section 2: Load Port differences
+    const updatedLoadPortDiffs = formData.loadPortFigures.map(
+      (lpVal, index) => {
+        const lp = parseFloat(lpVal);
+        const shipMomb = parseFloat(formData.shipsFiguresAtMombasa[index]);
+        if (lp && shipMomb) {
+          return parseFloat(Math.abs(lp - shipMomb).toFixed(3));
+        }
+        return 0;
+      },
+    );
 
-		setFormData((prevFormData) => ({
-			...prevFormData,
-			billOfLadingMetricTonsDifferences: updatedBillOfLadingDiffs,
-			billOfLadingPercentageDifferences: updatedBillOfLadingPctDiffs,
-			loadPortMetricTonsDifferences: updatedLoadPortDiffs,
-			loadPortPercentageDifferences: updatedLoadPortPctDiffs,
-		}));
-	}, [
-		formData.billOfLadingFigures,
-		formData.shipsFiguresAtDischargePort,
-		formData.loadPortFigures,
-		formData.shipsFiguresAtMombasa,
-	]);
+    const updatedLoadPortPctDiffs = formData.loadPortFigures.map(
+      (lpVal, index) => {
+        const lp = parseFloat(lpVal);
+        const diff = updatedLoadPortDiffs[index];
+        if (lp && lp !== 0 && diff) {
+          return parseFloat(((diff / lp) * 100).toFixed(3));
+        }
+        return 0;
+      },
+    );
 
-	useEffect(() => {
-		if (id) {
-			const fetchReport = async () => {
-				setLoading(true);
-				try {
-					const res = await fetch(`/api/noticeOfApparentDiscrepancy/get/${id}`);
-					const data = await res.json();
-					if (data.success !== false) {
-						setFormData({
-							...data,
-							dateOfReport: data.dateOfReport
-								? data.dateOfReport.split("T")[0]
-								: "",
-						});
-					} else {
-						setError(data.message);
-					}
-				} catch (err) {
-					setError(true);
-				} finally {
-					setLoading(false);
-				}
-			};
-			fetchReport();
-		}
-	}, [id]);
+    setFormData((prevFormData) => ({
+      ...prevFormData,
+      billOfLadingMetricTonsDifferences: updatedBillOfLadingDiffs,
+      billOfLadingPercentageDifferences: updatedBillOfLadingPctDiffs,
+      loadPortMetricTonsDifferences: updatedLoadPortDiffs,
+      loadPortPercentageDifferences: updatedLoadPortPctDiffs,
+    }));
+  }, [
+    formData.billOfLadingFigures,
+    formData.shipsFiguresAtDischargePort,
+    formData.loadPortFigures,
+    formData.shipsFiguresAtMombasa,
+  ]);
 
-	const handleSubmit = async (e) => {
-		e.preventDefault();
-		setLoading(true);
-		setError(false);
-		try {
-			const body = id ? { ...formData, _id: id } : formData;
-			const res = await fetch("/api/noticeOfApparentDiscrepancy/save", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify(body),
-			});
-			const data = await res.json();
-			if (data.success !== false) {
-				alert("Notice of Apparent Discrepancy Document Saved Successfully!");
-				if (!id && data._id) {
-					navigate(`/noticeOfApparentDiscrepancy/${data._id}`);
-				}
-			} else {
-				setError(data.message);
-			}
-		} catch (err) {
-			setError("Failed to establish server communication channels");
-		} finally {
-			setLoading(false);
-		}
-	};
+  // Balanced effect processing hook accommodating fallback or nested response layouts
+  useEffect(() => {
+    if (id) {
+      const fetchReport = async () => {
+        setLoading(true);
+        try {
+          const res = await fetch(`/api/noticeOfApparentDiscrepancy/get/${id}`);
+          const data = await res.json();
+          if (data.success !== false) {
+            // Check if backend uses the new wrapped style, otherwise fallback to root data object
+            const actualReport = data.report ? data.report : data;
+            
+            // Handle authorization validation check
+            const isOwnerCheck = data.isOwner !== undefined 
+              ? data.isOwner 
+              : (actualReport.userReference === currentUser?._id);
 
-	const handleChange = (e) => {
-		const { id, value } = e.target;
-		setFormData({ ...formData, [id]: value });
-	};
+            setCanEdit(isOwnerCheck);
 
-	// Parallel Arrays Master Utility Row Appender
-	const handleAddDiscrepancyRow = () => {
-		setFormData({
-			...formData,
-			billOfLadingFigures: [...formData.billOfLadingFigures, ""],
-			shipsFiguresAtDischargePort: [
-				...formData.shipsFiguresAtDischargePort,
-				"",
-			],
-			billOfLadingMetricTonsDifferences: [
-				...formData.billOfLadingMetricTonsDifferences,
-				0,
-			],
-			billOfLadingPercentageDifferences: [
-				...formData.billOfLadingPercentageDifferences,
-				0,
-			],
-			loadPortFigures: [...formData.loadPortFigures, ""],
-			shipsFiguresAtMombasa: [...formData.shipsFiguresAtMombasa, ""],
-			loadPortMetricTonsDifferences: [
-				...formData.loadPortMetricTonsDifferences,
-				0,
-			],
-			loadPortPercentageDifferences: [
-				...formData.loadPortPercentageDifferences,
-				0,
-			],
-		});
-	};
+            setFormData({
+              ...actualReport,
+              dateOfReport: actualReport.dateOfReport
+                ? actualReport.dateOfReport.split("T")[0]
+                : "",
+            });
+          } else {
+            setError(data.message || "Failed to decode backend payload records");
+          }
+        } catch (err) {
+          setError("Network exception caught streaming record database files");
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchReport();
+    }
+  }, [id, currentUser?._id]);
 
-	const handleItemArrayChange = (index, value, field) => {
-		const updatedList = [...formData[field]];
-		updatedList[index] = value;
-		setFormData({ ...formData, [field]: updatedList });
-	};
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!canEdit) return; // Explicit structural script blocker safety guard
+    setLoading(true);
+    setError(false);
+    try {
+      const body = id ? { ...formData, _id: id } : formData;
+      const res = await fetch("/api/noticeOfApparentDiscrepancy/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (data.success !== false) {
+        alert("Notice of Apparent Discrepancy Document Saved Successfully!");
+        if (!id && data._id) {
+          navigate(`/noticeOfApparentDiscrepancy/${data._id}`);
+        }
+      } else {
+        setError(data.message);
+      }
+    } catch (err) {
+      setError("Failed to establish server communication channels");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-	const handleRemoveDiscrepancyRow = (index) => {
-		if (formData.billOfLadingFigures.length > 1) {
-			setFormData({
-				...formData,
-				billOfLadingFigures: formData.billOfLadingFigures.filter(
-					(_, i) => i !== index,
-				),
-				shipsFiguresAtDischargePort:
-					formData.shipsFiguresAtDischargePort.filter((_, i) => i !== index),
-				billOfLadingMetricTonsDifferences:
-					formData.billOfLadingMetricTonsDifferences.filter(
-						(_, i) => i !== index,
-					),
-				billOfLadingPercentageDifferences:
-					formData.billOfLadingPercentageDifferences.filter(
-						(_, i) => i !== index,
-					),
-				loadPortFigures: formData.loadPortFigures.filter((_, i) => i !== index),
-				shipsFiguresAtMombasa: formData.shipsFiguresAtMombasa.filter(
-					(_, i) => i !== index,
-				),
-				loadPortMetricTonsDifferences:
-					formData.loadPortMetricTonsDifferences.filter((_, i) => i !== index),
-				loadPortPercentageDifferences:
-					formData.loadPortPercentageDifferences.filter((_, i) => i !== index),
-			});
-		}
-	};
+  const handleChange = (e) => {
+    if (!canEdit) return; // Explicit structural script blocker safety guard
+    const { id, value } = e.target;
+    setFormData({ ...formData, [id]: value });
+  };
 
-	// Grouped Object Array Row Modifiers
-	const handleAddRepresentativeRow = () => {
-		setFormData({
-			...formData,
-			representatives: [
-				...formData.representatives,
-				{
-					representativeName: "",
-					representativeIdentification: "",
-					representativeEmail: "",
-				},
-			],
-		});
-	};
+  // Parallel Arrays Master Utility Row Appender
+  const handleAddDiscrepancyRow = () => {
+    if (!canEdit) return; // Explicit structural script blocker safety guard
+    setFormData({
+      ...formData,
+      billOfLadingFigures: [...formData.billOfLadingFigures, ""],
+      shipsFiguresAtDischargePort: [
+        ...formData.shipsFiguresAtDischargePort,
+        "",
+      ],
+      billOfLadingMetricTonsDifferences: [
+        ...formData.billOfLadingMetricTonsDifferences,
+        0,
+      ],
+      billOfLadingPercentageDifferences: [
+        ...formData.billOfLadingPercentageDifferences,
+        0,
+      ],
+      loadPortFigures: [...formData.loadPortFigures, ""],
+      shipsFiguresAtMombasa: [...formData.shipsFiguresAtMombasa, ""],
+      loadPortMetricTonsDifferences: [
+        ...formData.loadPortMetricTonsDifferences,
+        0,
+      ],
+      loadPortPercentageDifferences: [
+        ...formData.loadPortPercentageDifferences,
+        0,
+      ],
+    });
+  };
 
-	const handleRepresentativeRowChange = (index, field, value) => {
-		const updatedRepresentatives = [...formData.representatives];
-		updatedRepresentatives[index][field] = value;
-		setFormData({ ...formData, representatives: updatedRepresentatives });
-	};
+  const handleItemArrayChange = (index, value, field) => {
+    if (!canEdit) return; // Explicit structural script blocker safety guard
+    const updatedList = [...formData[field]];
+    updatedList[index] = value;
+    setFormData({ ...formData, [field]: updatedList });
+  };
 
-	const handleRemoveRepresentativeRow = (index) => {
-		if (formData.representatives.length > 1) {
-			setFormData({
-				...formData,
-				representatives: formData.representatives.filter((_, i) => i !== index),
-			});
-		}
-	};
+  const handleRemoveDiscrepancyRow = (index) => {
+    if (!canEdit) return; // Explicit structural script blocker safety guard
+    if (formData.billOfLadingFigures.length > 1) {
+      setFormData({
+        ...formData,
+        billOfLadingFigures: formData.billOfLadingFigures.filter(
+          (_, i) => i !== index,
+        ),
+        shipsFiguresAtDischargePort:
+          formData.shipsFiguresAtDischargePort.filter((_, i) => i !== index),
+        billOfLadingMetricTonsDifferences:
+          formData.billOfLadingMetricTonsDifferences.filter(
+            (_, i) => i !== index,
+          ),
+        billOfLadingPercentageDifferences:
+          formData.billOfLadingPercentageDifferences.filter(
+            (_, i) => i !== index,
+          ),
+        loadPortFigures: formData.loadPortFigures.filter((_, i) => i !== index),
+        shipsFiguresAtMombasa: formData.shipsFiguresAtMombasa.filter(
+          (_, i) => i !== index,
+        ),
+        loadPortMetricTonsDifferences:
+          formData.loadPortMetricTonsDifferences.filter((_, i) => i !== index),
+        loadPortPercentageDifferences:
+          formData.loadPortPercentageDifferences.filter((_, i) => i !== index),
+      });
+    }
+  };
+
+  // Grouped Object Array Row Modifiers
+  const handleAddRepresentativeRow = () => {
+    if (!canEdit) return; // Explicit structural script blocker safety guard
+    setFormData({
+      ...formData,
+      representatives: [
+        ...formData.representatives,
+        {
+          representativeName: "",
+          representativeIdentification: "",
+          representativeEmail: "",
+        },
+      ],
+    });
+  };
+
+  const handleRepresentativeRowChange = (index, field, value) => {
+    if (!canEdit) return; // Explicit structural script blocker safety guard
+    const updatedRepresentatives = [...formData.representatives];
+    updatedRepresentatives[index][field] = value;
+    setFormData({ ...formData, representatives: updatedRepresentatives });
+  };
+
+  const handleRemoveRepresentativeRow = (index) => {
+    if (!canEdit) return; // Explicit structural script blocker safety guard
+    if (formData.representatives.length > 1) {
+      setFormData({
+        ...formData,
+        representatives: formData.representatives.filter((_, i) => i !== index),
+      });
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="p-8 text-center text-xs font-serif font-bold uppercase tracking-widest text-gray-600">
+        Syncing inspector document registry matrix streams...
+      </div>
+    );
+  }
+
 
 	const inputStyle =
 		"w-full bg-[#f8f6f6] p-2 border-b border-black outline-none transition-all hover:shadow-[inset_0_2px_5px_rgba(0,0,0,0.19)] focus:border focus:shadow-[2px_2px_rgba(0,0,0,0.19)] text-xs font-serif font-medium";

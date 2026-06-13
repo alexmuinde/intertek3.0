@@ -79,96 +79,115 @@ export default function Header() {
   };
 
   return (
-    <header className="w-full bg-white border-b-2 border-black font-serif text-gray-900 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
-        
-        {/* LOGO CORPORATE BRAND MARK */}
-        <Link to="/" className="flex items-center gap-2 group shrink-0">
-          <img 
-            src="/Intertek_logo.svg.png" 
-            alt="Intertek Logo" 
-            className="h-8 w-auto object-contain max-w-[140px] transition-transform group-hover:scale-102"
+  <header className="w-full bg-white border-b-2 border-black font-serif text-gray-900 sticky top-0 z-50">
+    <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-3 md:gap-4">
+      
+      {/* LOGO CORPORATE BRAND MARK - Hidden on mobile, returns to natural position on tablet+ */}
+      <Link to="/" className="hidden md:flex items-center gap-2 group shrink-0">
+        <img 
+          src="/Intertek_logo.svg.png" 
+          alt="Intertek Logo" 
+          className="h-8 w-auto object-contain max-w-[140px] transition-transform group-hover:scale-102"
+        />
+      </Link>
+
+      {/* COMPREHENSIVE CONTROL DIRECTORY INPUT ROW - Order 2 on mobile, standard flex child on tablet+ */}
+      <div ref={dropdownRef} className="order-2 md:order-none flex-1 max-w-xl relative mx-0 md:mx-2">
+        <form onSubmit={handleFormSubmission} className="relative flex items-center">
+          <input
+            type="text"
+            placeholder="Search Client, Truck, or Inspector Document file name..."
+            className={`${inputStyle} pr-8 w-full text-xs md:text-sm`}
+            value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setShowDropdown(true);
+            }}
+            onFocus={() => setShowDropdown(true)}
           />
-          
-        </Link>
+          <button 
+            type="submit" 
+            className="absolute right-2 top-2.5 p-1 text-gray-600 hover:text-black transition-colors"
+            aria-label="Submit Form Filter Search"
+          >
+            <FaSearch className="text-xs" />
+          </button>
+        </form>
 
-        {/* COMPREHENSIVE CONTROL DIRECTORY INPUT ROW */}
-        <div ref={dropdownRef} className="flex-1 max-w-xl relative mx-2">
-          <form onSubmit={handleFormSubmission} className="relative flex items-center">
-            <input
-              type="text"
-              placeholder="Search Client, Truck, or Inspector Document file name..."
-              className={`${inputStyle} pr-8`}
-              value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                setShowDropdown(true);
-              }}
-              onFocus={() => setShowDropdown(true)}
-            />
-            <button 
-              type="submit" 
-              className="absolute right-2 top-2.5 p-1 text-gray-600 hover:text-black transition-colors"
-              aria-label="Submit Form Filter Search"
-            >
-              <FaSearch className="text-xs" />
-            </button>
-          </form>
-
-          {/* AUTOCOMPLETE LIVE LOOKUP INDEX PANEL */}
-          {showDropdown && searchResults.length > 0 && (
-            <ul className="absolute left-0 right-0 top-full mt-1 bg-white border border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] max-h-72 overflow-y-auto z-50">
-              <li className="bg-gray-100 px-3 py-2 border-b border-black text-[9px] font-bold text-gray-500 tracking-wider uppercase">
-                Matching Inspector Workspace Files ({searchResults.length})
+        {/* AUTOCOMPLETE LIVE LOOKUP INDEX PANEL */}
+        {showDropdown && searchResults.length > 0 && (
+          <ul className="absolute left-0 right-0 top-full mt-1 bg-white border border-black shadow-[4px_4px_0px_rgba(0,0,0,1)] max-h-72 overflow-y-auto z-50">
+            <li className="bg-gray-100 px-3 py-2 border-b border-black text-[9px] font-bold text-gray-500 tracking-wider uppercase">
+              Matching Inspector Workspace Files ({searchResults.length})
+            </li>
+            {searchResults.map((doc) => (
+              <li key={doc.id}>
+                <button
+                  type="button"
+                  onClick={() => handleDocumentNavigation(doc.path)}
+                  className="w-full text-left px-4 py-2.5 text-[11px] font-medium hover:bg-gray-50 flex items-center justify-between border-b border-gray-100 transition-all uppercase tracking-wide"
+                >
+                  <span className="truncate pr-4 text-gray-800 font-semibold">{doc.name}</span>
+                </button>
               </li>
-              {searchResults.map((doc) => (
-                <li key={doc.id}>
-                  <button
-                    type="button"
-                    onClick={() => handleDocumentNavigation(doc.path)}
-                    className="w-full text-left px-4 py-2.5 text-[11px] font-medium hover:bg-gray-50 flex items-center justify-between border-b border-gray-100 transition-all uppercase tracking-wide"
-                  >
-                    <span className="truncate pr-4 text-gray-800 font-semibold">{doc.name}</span>
-                    
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
+            ))}
+          </ul>
+        )}
 
-          {/* FALLBACK SYSTEM DISCOVERY BANNER */}
-          {showDropdown && searchTerm.trim() !== "" && searchResults.length === 0 && (
-            <div className="absolute left-0 right-0 top-full mt-1 bg-[#f8f6f6] border border-black p-3 text-[10px] text-center text-gray-600 font-bold tracking-wide uppercase">
-              No matching backend document file schemas isolated
-            </div>
-          )}
-        </div>
-
-        {/* WORKSPACE OPERATIONS LINKS */}
-        <nav className="flex items-center gap-5 text-[11px] font-bold tracking-wide uppercase shrink-0">
-          <Link to="/" className="hover:text-blue-800 transition-all">
-            Home
-          </Link>
-          <Link to="/about" className="hidden md:inline hover:text-blue-800 transition-all">
-            About
-          </Link>
-          <Link to="/profile" className="flex items-center">
-            {currentUser ? (
-              <img
-                src={currentUser.avatar}
-                alt="Profile Record Avatar"
-                referrerPolicy="no-referrer"
-                className="h-8 w-8 rounded-full border border-black object-cover shadow-[2px_2px_0px_rgba(0,0,0,0.15)] hover:scale-105 transition-all"
-              />
-            ) : (
-              <span className="border border-black px-3 py-1.5 bg-black text-white hover:bg-white hover:text-black transition-all text-[10px]">
-                Sign In
-              </span>
-            )}
-          </Link>
-        </nav>
-
+        {/* FALLBACK SYSTEM DISCOVERY BANNER */}
+        {showDropdown && searchTerm.trim() !== "" && searchResults.length === 0 && (
+          <div className="absolute left-0 right-0 top-full mt-1 bg-[#f8f6f6] border border-black p-3 text-[10px] text-center text-gray-600 font-bold tracking-wide uppercase">
+            No matching backend document file schemas isolated
+          </div>
+        )}
       </div>
-    </header>
-  );
+
+      {/* MOBILE ONLY AVATAR HOOK - Order 1 on mobile, hidden entirely on tablet+ */}
+      <div className="order-1 md:hidden shrink-0">
+        <Link to="/profile" className="flex items-center">
+          {currentUser ? (
+            <img
+              src={currentUser.avatar}
+              alt="Profile Record Avatar"
+              referrerPolicy="no-referrer"
+              className="h-8 w-8 rounded-full border border-black object-cover shadow-[2px_2px_0px_rgba(0,0,0,0.15)]"
+            />
+          ) : (
+            <span className="border border-black px-2 py-1 bg-black text-white text-[9px] font-bold tracking-wide uppercase">
+              Sign In
+            </span>
+          )}
+        </Link>
+      </div>
+
+      {/* WORKSPACE OPERATIONS LINKS - Order 3 on mobile, unified navigation row on tablet+ */}
+      <nav className="order-3 md:order-none flex items-center gap-3 md:gap-5 text-[11px] font-bold tracking-wide uppercase shrink-0">
+        <Link to="/" className="hover:text-blue-800 transition-all">
+          Home
+        </Link>
+        <Link to="/about" className="hidden md:inline hover:text-blue-800 transition-all">
+          About
+        </Link>
+        
+        {/* DESKTOP ONLY AVATAR HOOK - Hidden on mobile, handles full layout group on tablet+ */}
+        <Link to="/profile" className="hidden md:flex items-center">
+          {currentUser ? (
+            <img
+              src={currentUser.avatar}
+              alt="Profile Record Avatar"
+              referrerPolicy="no-referrer"
+              className="h-8 w-8 rounded-full border border-black object-cover shadow-[2px_2px_0px_rgba(0,0,0,0.15)] hover:scale-105 transition-all"
+            />
+          ) : (
+            <span className="border border-black px-3 py-1.5 bg-black text-white hover:bg-white hover:text-black transition-all text-[10px]">
+              Sign In
+            </span>
+          )}
+        </Link>
+      </nav>
+
+    </div>
+  </header>
+);
+
 }

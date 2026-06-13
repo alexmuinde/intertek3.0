@@ -52,8 +52,31 @@ export default function Home() {
         setFeedLoading(true);
         
         // Active backend data collections to poll
-        const targetGlobalEndpoints = ["sealingReport", "statementOfFacts", "weighBridge", "shoreTankQuantityReport"];
-        
+        const targetGlobalEndpoints = [
+  
+  "weighBridge",
+  "statementOfFacts",
+  "sealingReport",
+  "vesselExperienceFactor",
+  "vesselDischargeStatus",
+  "shoreTankQuantityReport",
+  "shoreTankMeasurementData",
+  "shoreTankCleanlinessReport",
+  "shipsTanksUllageReport",
+  "rtwsSafetyChecklist",
+  "receiptOfSealedSamples",
+  "pumpingPressureLog",
+  "pipelineInspectionReport",
+  "noticeOfApparentDiscrepancy",
+  "letterOfProtestSlowRate",
+  "letterOfProtestShoreFinalOutturnFigures",
+  "letterOfProtestGeneral",
+  "letterOfAssurance",
+  "handOverReport",
+  "endOfPipelineSampleReport",
+  "dischargeProcedureSequence"
+];
+
         // Wrapped in an individual catch-handler block to ensure any single 404/401 failure doesn't break the feed
         const fetchPromises = targetGlobalEndpoints.map(async (endpoint) => {
           try {
@@ -124,20 +147,7 @@ export default function Home() {
   return (
     <main className="p-4 max-w-7xl mx-auto font-serif bg-white text-gray-900 min-h-screen">
       
-      {/* GLOBAL SYSTEM DASHBOARD TITLE FRAME BANNER */}
-      <header className="mb-6 border-b-2 border-black pb-3 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-lg font-bold uppercase tracking-widest flex items-center gap-2">
-            <FaGlobe className="text-blue-800 text-sm animate-pulse" /> Live Activity Hub
-          </h1>
-          <p className="text-xs text-gray-600 mt-1 italic">
-            Monitoring live modifications across all user registries. Active Session: @{currentUser?.username || "Guest Inspector"}.
-          </p>
-        </div>
-        <div className="text-[10px] bg-black text-white px-3 py-1 font-bold tracking-wider uppercase border border-black shadow-[2px_2px_0px_rgba(0,0,0,0.15)]">
-          Node Synced
-        </div>
-      </header>
+     
 
       {/* DETAILED RESPONSIVE BRUTALIST RUNTIME DISPLAY SPLIT */}
       <div className="flex flex-col lg:flex-row gap-8">
@@ -147,7 +157,7 @@ export default function Home() {
           <div className="bg-gray-100 p-2 border-l-4 border-black flex items-center gap-2">
             <FaHistory className="text-xs text-black" />
             <h2 className="text-xs font-bold uppercase tracking-wider">
-              System Wide Live Activity Streams (Lastly Updated First)
+              System Wide Live Activity Streams 
             </h2>
           </div>
 
@@ -203,55 +213,7 @@ export default function Home() {
           )}
         </div>
 
-        {/* SYSTEM ACTIONS & FORM COMPONENT SELECTION ROW */}
-        <div className="w-full lg:w-[420px] flex flex-col gap-4">
-          <div className="bg-gray-100 p-2 border-l-4 border-black flex justify-between items-center">
-            <div className="flex items-center gap-2">
-              <FaFolderOpen className="text-xs text-black" />
-              <h2 className="text-xs font-bold uppercase tracking-wider">
-                Document Blueprints Catalog
-              </h2>
-            </div>
-            <span className="text-[9px] font-mono bg-black text-white px-1.5 py-0.5 font-bold">
-              {filteredCatalog.length} SCHEMAS
-            </span>
-          </div>
-
-          <div>
-            <label className={labelStyle}>Quick Component Catalog Filter</label>
-            <input 
-              type="text" 
-              className={inputStyle}
-              placeholder="Search blueprints by category or naming scheme..."
-              value={catalogSearch}
-              onChange={(e) => setCatalogSearch(e.target.value)}
-            />
-          </div>
-
-          <div className="flex flex-col gap-2 max-h-[500px] overflow-y-auto pr-1 border border-gray-200 p-2 bg-gray-50/50">
-            {filteredCatalog.map((doc) => (
-              <div 
-                key={doc.id}
-                className="group border border-gray-300 bg-white p-2.5 hover:border-black transition-colors flex items-center justify-between gap-3"
-              >
-                <div className="flex flex-col gap-0.5 truncate">
-                  <span className="text-[8px] font-bold tracking-widest text-gray-400 uppercase font-mono">
-                    {doc.category}
-                  </span>
-                  <h4 className="text-[11px] font-bold text-gray-800 uppercase tracking-wide truncate group-hover:text-black transition-colors">
-                    {doc.name}
-                  </h4>
-                </div>
-                <Link
-                  to={doc.path}
-                  className="bg-gray-100 hover:bg-black hover:text-white p-1.5 border border-gray-300 group-hover:border-black transition-all text-gray-700 text-[10px]"
-                >
-                  <FaPlus />
-                </Link>
-              </div>
-            ))}
-          </div>
-        </div>
+        
 
       </div>
     </main>

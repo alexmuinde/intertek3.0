@@ -3,216 +3,245 @@ import { useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
 
 export default function ShipsTanksUllageReport() {
-	const { currentUser } = useSelector((state) => state.user);
-	const navigate = useNavigate();
-	const { id } = useParams();
+	  const { currentUser } = useSelector((state) => state.user);
+  const navigate = useNavigate();
+  const { id } = useParams();
 
-	const [error, setError] = useState(false);
-	const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [canEdit, setCanEdit] = useState(true); // Toggles view vs write configuration settings
 
-	const [formData, setFormData] = useState({
-		userReference: currentUser._id,
-		vesselName: "",
-		portName: "",
-		dateOfReport: "",
-		cargoDescription: "",
-		berthNumber: "",
+  const [formData, setFormData] = useState({
+    userReference: currentUser?._id,
+    vesselName: "",
+    portName: "",
+    dateOfReport: "",
+    cargoDescription: "",
+    berthNumber: "",
 
-		// Dynamic Parallel Arrays tracking matching tank records columns
-		tankNumbers: [""],
-		correctedUllageSoundingMetricTons: [""],
-		freeWaterDipCentimeters: [""],
-		volumesAtTankTemperature: [""],
-		temperatures: [""],
-		kilogramsPerLitreInAir: [""],
-		metricTonsInAir: [""],
+    // Dynamic Parallel Arrays tracking matching tank records columns
+    tankNumbers: [""],
+    correctedUllageSoundingMetricTons: [""],
+    freeWaterDipCentimeters: [""],
+    volumesAtTankTemperature: [""],
+    temperatures: [""],
+    kilogramsPerLitreInAir: [""],
+    metricTonsInAir: [""],
 
-		totalVolume: 0, // Read-Only state metrics
-		totalWeight: 0, // Read-Only state metrics
+    totalVolume: 0, // Read-Only state metrics
+    totalWeight: 0, // Read-Only state metrics
 
-		basisKilogramsPerLitreInAir: "",
-		basisTemperatureDegrees: "",
-		temperatureCoefficientFactorPerDegree: "",
+    basisKilogramsPerLitreInAir: "",
+    basisTemperatureDegrees: "",
+    temperatureCoefficientFactorPerDegree: "",
 
-		forwardDraft: "",
-		aftDraft: "",
-		vesselList: "",
-		seaCondition: "",
+    forwardDraft: "",
+    aftDraft: "",
+    vesselList: "",
+    seaCondition: "",
 
-		equipmentType: "",
-		equipmentSerialNumber: "",
-		calibrationCertificateNumber: "",
-		equipmentExpiryDate: "",
+    equipmentType: "",
+    equipmentSerialNumber: "",
+    calibrationCertificateNumber: "",
+    equipmentExpiryDate: "",
 
-		intertekInspector: "",
-		representatives: [
-			{
-				representativeName: "",
-				representativeIdentification: "",
-				representativeEmail: "",
-			},
-		],
-	});
+    intertekInspector: "",
+    representatives: [
+      {
+        representativeName: "",
+        representativeIdentification: "",
+        representativeEmail: "",
+      },
+    ],
+  });
 
-	// --- DYNAMIC REAL-TIME GRAND TOTALS MATHEMATICS ENGINE ---
-	useEffect(() => {
-		const calculatedTotalVolume = formData.volumesAtTankTemperature.reduce(
-			(accumulator, currentIndexValue) =>
-				accumulator + (parseFloat(currentIndexValue) || 0),
-			0,
-		);
+  // --- DYNAMIC REAL-TIME GRAND TOTALS MATHEMATICS ENGINE ---
+  useEffect(() => {
+    const calculatedTotalVolume = formData.volumesAtTankTemperature.reduce(
+      (accumulator, currentIndexValue) =>
+        accumulator + (parseFloat(currentIndexValue) || 0),
+      0,
+    );
 
-		const calculatedTotalWeight = formData.metricTonsInAir.reduce(
-			(accumulator, currentIndexValue) =>
-				accumulator + (parseFloat(currentIndexValue) || 0),
-			0,
-		);
+    const calculatedTotalWeight = formData.metricTonsInAir.reduce(
+      (accumulator, currentIndexValue) =>
+        accumulator + (parseFloat(currentIndexValue) || 0),
+      0,
+    );
 
-		setFormData((prevFormData) => ({
-			...prevFormData,
-			totalVolume: calculatedTotalVolume,
-			totalWeight: calculatedTotalWeight,
-		}));
-	}, [formData.volumesAtTankTemperature, formData.metricTonsInAir]);
+    setFormData((prevFormData) => ({
+      ...prevFormData,
+      totalVolume: calculatedTotalVolume,
+      totalWeight: calculatedTotalWeight,
+    }));
+  }, [formData.volumesAtTankTemperature, formData.metricTonsInAir]);
 
-	useEffect(() => {
-		if (id) {
-			const fetchReport = async () => {
-				setLoading(true);
-				try {
-					const res = await fetch(`/api/shipsTanksUllageReport/get/${id}`);
-					const data = await res.json();
-					if (data.success !== false) {
-						setFormData({
-							...data,
-							dateOfReport: data.dateOfReport
-								? data.dateOfReport.split("T")[0]
-								: "",
-							equipmentExpiryDate: data.equipmentExpiryDate
-								? data.equipmentExpiryDate.split("T")[0]
-								: "",
-						});
-					} else {
-						setError(data.message);
-					}
-				} catch (err) {
-					setError(true);
-				} finally {
-					setLoading(false);
-				}
-			};
-			fetchReport();
-		}
-	}, [id]);
+  // Balanced effect processing hook accommodating fallback or nested response layouts
+  useEffect(() => {
+    if (id) {
+      const fetchReport = async () => {
+        setLoading(true);
+        try {
+          const res = await fetch(`/api/shipsTanksUllageReport/get/${id}`);
+          const data = await res.json();
+          if (data.success !== false) {
+            // Check if backend uses the new wrapped style, otherwise fallback to root data object
+            const actualReport = data.report ? data.report : data;
+            
+            // Handle authorization validation check
+            const isOwnerCheck = data.isOwner !== undefined 
+              ? data.isOwner 
+              : (actualReport.userReference === currentUser?._id);
 
-	const handleSubmit = async (e) => {
-		e.preventDefault();
-		setLoading(true);
-		setError(false);
-		try {
-			const body = id ? { ...formData, _id: id } : formData;
-			const res = await fetch("/api/shipsTanksUllageReport/save", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify(body),
-			});
-			const data = await res.json();
-			if (data.success !== false) {
-				alert("Record Saved Successfully!");
-				if (!id && data._id) {
-					navigate(`/shipsTanksUllageReport/${data._id}`);
-				}
-			} else {
-				setError(data.message);
-			}
-		} catch (err) {
-			setError("Failed to establish server communication channels");
-		} finally {
-			setLoading(false);
-		}
-	};
+            setCanEdit(isOwnerCheck);
 
-	const handleChange = (e) => {
-		const { id, value } = e.target;
-		setFormData({ ...formData, [id]: value });
-	};
+            setFormData({
+              ...actualReport,
+              dateOfReport: actualReport.dateOfReport
+                ? actualReport.dateOfReport.split("T")
+                : "",
+              equipmentExpiryDate: actualReport.equipmentExpiryDate
+                ? actualReport.equipmentExpiryDate.split("T")
+                : "",
+            });
+          } else {
+            setError(data.message || "Failed to decode backend payload records");
+          }
+        } catch (err) {
+          setError("Network exception caught streaming record database files");
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchReport();
+    }
+  }, [id, currentUser?._id]);
 
-	// Parallel Arrays Column Append Management
-	const handleAddTankRecordRow = () => {
-		setFormData({
-			...formData,
-			tankNumbers: [...formData.tankNumbers, ""],
-			correctedUllageSoundingMetricTons: [
-				...formData.correctedUllageSoundingMetricTons,
-				"",
-			],
-			freeWaterDipCentimeters: [...formData.freeWaterDipCentimeters, ""],
-			volumesAtTankTemperature: [...formData.volumesAtTankTemperature, ""],
-			temperatures: [...formData.temperatures, ""],
-			kilogramsPerLitreInAir: [...formData.kilogramsPerLitreInAir, ""],
-			metricTonsInAir: [...formData.metricTonsInAir, ""],
-		});
-	};
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!canEdit) return; // Explicit structural script blocker safety guard
+    setLoading(true);
+    setError(false);
+    try {
+      const body = id ? { ...formData, _id: id } : formData;
+      const res = await fetch("/api/shipsTanksUllageReport/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (data.success !== false) {
+        alert("Record Saved Successfully!");
+        if (!id && data._id) {
+          navigate(`/shipsTanksUllageReport/${data._id}`);
+        }
+      } else {
+        setError(data.message);
+      }
+    } catch (err) {
+      setError("Failed to establish server communication channels");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-	const handleTankItemChange = (index, value, field) => {
-		const updatedList = [...formData[field]];
-		updatedList[index] = value;
-		setFormData({ ...formData, [field]: updatedList });
-	};
+  const handleChange = (e) => {
+    if (!canEdit) return; // Explicit structural script blocker safety guard
+    const { id, value } = e.target;
+    setFormData({ ...formData, [id]: value });
+  };
 
-	const handleRemoveTankRecordRow = (index) => {
-		if (formData.tankNumbers.length > 1) {
-			setFormData({
-				...formData,
-				tankNumbers: formData.tankNumbers.filter((_, i) => i !== index),
-				correctedUllageSoundingMetricTons:
-					formData.correctedUllageSoundingMetricTons.filter(
-						(_, i) => i !== index,
-					),
-				freeWaterDipCentimeters: formData.freeWaterDipCentimeters.filter(
-					(_, i) => i !== index,
-				),
-				volumesAtTankTemperature: formData.volumesAtTankTemperature.filter(
-					(_, i) => i !== index,
-				),
-				temperatures: formData.temperatures.filter((_, i) => i !== index),
-				kilogramsPerLitreInAir: formData.kilogramsPerLitreInAir.filter(
-					(_, i) => i !== index,
-				),
-				metricTonsInAir: formData.metricTonsInAir.filter((_, i) => i !== index),
-			});
-		}
-	};
+  // Parallel Arrays Column Append Management
+  const handleAddTankRecordRow = () => {
+    if (!canEdit) return; // Explicit structural script blocker safety guard
+    setFormData({
+      ...formData,
+      tankNumbers: [...formData.tankNumbers, ""],
+      correctedUllageSoundingMetricTons: [
+        ...formData.correctedUllageSoundingMetricTons,
+        "",
+      ],
+      freeWaterDipCentimeters: [...formData.freeWaterDipCentimeters, ""],
+      volumesAtTankTemperature: [...formData.volumesAtTankTemperature, ""],
+      temperatures: [...formData.temperatures, ""],
+      kilogramsPerLitreInAir: [...formData.kilogramsPerLitreInAir, ""],
+      metricTonsInAir: [...formData.metricTonsInAir, ""],
+    });
+  };
 
-	// Grouped Representative Array Rows Modifiers
-	const handleAddRepresentativeRow = () => {
-		setFormData({
-			...formData,
-			representatives: [
-				...formData.representatives,
-				{
-					representativeName: "",
-					representativeIdentification: "",
-					representativeEmail: "",
-				},
-			],
-		});
-	};
+  const handleTankItemChange = (index, value, field) => {
+    if (!canEdit) return; // Explicit structural script blocker safety guard
+    const updatedList = [...formData[field]];
+    updatedList[index] = value;
+    setFormData({ ...formData, [field]: updatedList });
+  };
 
-	const handleRepresentativeRowChange = (index, field, value) => {
-		const updatedRepresentatives = [...formData.representatives];
-		updatedRepresentatives[index][field] = value;
-		setFormData({ ...formData, representatives: updatedRepresentatives });
-	};
+  const handleRemoveTankRecordRow = (index) => {
+    if (!canEdit) return; // Explicit structural script blocker safety guard
+    if (formData.tankNumbers.length > 1) {
+      setFormData({
+        ...formData,
+        tankNumbers: formData.tankNumbers.filter((_, i) => i !== index),
+        correctedUllageSoundingMetricTons:
+          formData.correctedUllageSoundingMetricTons.filter(
+            (_, i) => i !== index,
+          ),
+        freeWaterDipCentimeters: formData.freeWaterDipCentimeters.filter(
+          (_, i) => i !== index,
+        ),
+        volumesAtTankTemperature: formData.volumesAtTankTemperature.filter(
+          (_, i) => i !== index,
+        ),
+        temperatures: formData.temperatures.filter((_, i) => i !== index),
+        kilogramsPerLitreInAir: formData.kilogramsPerLitreInAir.filter(
+          (_, i) => i !== index,
+        ),
+        metricTonsInAir: formData.metricTonsInAir.filter((_, i) => i !== index),
+      });
+    }
+  };
 
-	const handleRemoveRepresentativeRow = (index) => {
-		if (formData.representatives.length > 1) {
-			setFormData({
-				...formData,
-				representatives: formData.representatives.filter((_, i) => i !== index),
-			});
-		}
-	};
+  // Grouped Representative Array Rows Modifiers
+  const handleAddRepresentativeRow = () => {
+    if (!canEdit) return; // Explicit structural script blocker safety guard
+    setFormData({
+      ...formData,
+      representatives: [
+        ...formData.representatives,
+        {
+          representativeName: "",
+          representativeIdentification: "",
+          representativeEmail: "",
+        },
+      ],
+    });
+  };
+
+  const handleRepresentativeRowChange = (index, field, value) => {
+    if (!canEdit) return; // Explicit structural script blocker safety guard
+    const updatedRepresentatives = [...formData.representatives];
+    updatedRepresentatives[index][field] = value;
+    setFormData({ ...formData, representatives: updatedRepresentatives });
+  };
+
+  const handleRemoveRepresentativeRow = (index) => {
+    if (!canEdit) return; // Explicit structural script blocker safety guard
+    if (formData.representatives.length > 1) {
+      setFormData({
+        ...formData,
+        representatives: formData.representatives.filter((_, i) => i !== index),
+      });
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="p-8 text-center text-xs font-serif font-bold uppercase tracking-widest text-gray-600">
+        Syncing inspector document registry matrix streams...
+      </div>
+    );
+  }
+
 
 	const inputStyle =
 		"w-full bg-[#f8f6f6] p-2 border-b border-black outline-none transition-all hover:shadow-[inset_0_2px_5px_rgba(0,0,0,0.19)] focus:border focus:shadow-[2px_2px_rgba(0,0,0,0.19)] text-xs font-serif font-medium";

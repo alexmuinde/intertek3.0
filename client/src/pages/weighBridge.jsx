@@ -5,148 +5,168 @@ import { useNavigate, useParams } from "react-router-dom";
 
 export default function WeighBridge() {
 	// Workflow: Pull current user to link this document to the surveyor
-	const { currentUser } = useSelector((state) => state.user);
-	const navigate = useNavigate();
-	const { id } = useParams();
+	  const { currentUser } = useSelector((state) => state.user);
+  const navigate = useNavigate();
+  const { id } = useParams();
 
-	// Logic: Track UI feedback (loading and error messages)
-	const [error, setError] = useState(false);
-	const [loading, setLoading] = useState(false);
+  // Logic: Track UI feedback (loading and error messages)
+  const [error, setError] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [canEdit, setCanEdit] = useState(true); // Toggles view vs write configuration settings
 
-	// Workflow: Initial state using fully expanded naming conventions matching the backend schema
-	const [formData, setFormData] = useState({
-		userReference: currentUser._id,
-		intertekSurveyor: "",
-		placeOfLoading: "",
-		client: "",
-		transportCompany: "",
-		dateOfLoading: "",
-		timeOfInspection: "",
-		truckCommencedLoading: "",
-		truckCompletedLoading: "",
-		vessel: "",
-		grade: "",
-		density: "",
-		shoreTankNumber: "",
-		temperature: "",
-		constructionMaterial: "",
-		truckNumber: "",
-		driversName: "",
-		driversIdentification: "",
-		grossWeight: "",
-		tareWeight: "",
-		netWeight: "",
-		cumulativeWeight: "",
-		weighbridgeReceipt: "",
-		previousCargo: "",
-		trackSealedBy: "",
-		bottomSeals: [""],
-		topSeals: [""],
-		// Checkboxes
-		isClean: false,
-		hasSpareWheel: false,
-		waterContainerEmpty: false,
-		isVehicleEmpty: false,
-		nothingAttached: false,
-	});
+  // Workflow: Initial state using fully expanded naming conventions matching the backend schema
+  const [formData, setFormData] = useState({
+    userReference: currentUser?._id,
+    intertekSurveyor: "",
+    placeOfLoading: "",
+    client: "",
+    transportCompany: "",
+    dateOfLoading: "",
+    timeOfInspection: "",
+    truckCommencedLoading: "",
+    truckCompletedLoading: "",
+    vessel: "",
+    grade: "",
+    density: "",
+    shoreTankNumber: "",
+    temperature: "",
+    constructionMaterial: "",
+    truckNumber: "",
+    driversName: "",
+    driversIdentification: "",
+    grossWeight: "",
+    tareWeight: "",
+    netWeight: "",
+    cumulativeWeight: "",
+    weighbridgeReceipt: "",
+    previousCargo: "",
+    trackSealedBy: "",
+    bottomSeals: [""],
+    topSeals: [""],
+    // Checkboxes
+    isClean: false,
+    hasSpareWheel: false,
+    waterContainerEmpty: false,
+    isVehicleEmpty: false,
+    nothingAttached: false,
+  });
 
-	useEffect(() => {
-		// Only fetch if there is an ID in the URL (Update Mode)
-		if (id) {
-			const fetchReport = async () => {
-				setLoading(true);
-				try {
-					// Synchronized with corrected lowercase/hyphenated backend route path
-					const res = await fetch(`/api/weighBridge/get/${id}`);
-					const data = await res.json();
+  // Balanced effect processing hook accommodating { report, isOwner } data packaging structures
+  useEffect(() => {
+    // Only fetch if there is an ID in the URL (Update Mode)
+    if (id) {
+      const fetchReport = async () => {
+        setLoading(true);
+        try {
+          // Synchronized with corrected lowercase/hyphenated backend route path
+          const res = await fetch(`/api/weighBridge/get/${id}`);
+          const data = await res.json();
 
-					if (data.success !== false) {
-						// Format dates to YYYY-MM-DD for HTML5 inputs safely
-						const formattedData = {
-							...data,
-							dateOfLoading: data.dateOfLoading
-								? data.dateOfLoading.split("T")[0]
-								: "",
-						};
-						setFormData(formattedData);
-					} else {
-						setError(data.message);
-					}
-				} catch (err) {
-					setError(true);
-				} finally {
-					setLoading(false);
-				}
-			};
-			fetchReport();
-		}
-	}, [id]);
+          if (data.success !== false && data.report) {
+            // Pluck inner record body object properties securely
+            const actualReport = data.report;
+            setCanEdit(data.isOwner); // Bind workspace authorization layer dynamically
 
-	const handleSubmit = async (e) => {
-		e.preventDefault();
-		setLoading(true);
-		setError(false);
+            // Format dates to YYYY-MM-DD for HTML5 inputs safely
+            const formattedData = {
+              ...actualReport,
+              dateOfLoading: actualReport.dateOfLoading
+                ? actualReport.dateOfLoading.split("T")[0]
+                : "",
+            };
+            setFormData(formattedData);
+          } else {
+            setError(data.message || "Failed to decode backend payload records");
+          }
+        } catch (err) {
+          setError("Network exception caught streaming record database files");
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchReport();
+    }
+  }, [id]); 
 
-		try {
-			// If 'id' exists in URL, include it in body to trigger an Update in the backend
-			const body = id ? { ...formData, _id: id } : formData;
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!canEdit) return; // Explicit structural script blocker safety guard
+    setLoading(true);
+    setError(false);
 
-			const res = await fetch("/api/weighBridge/save", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify(body),
-			});
+    try {
+      // If 'id' exists in URL, include it in body to trigger an Update in the backend
+      const body = id ? { ...formData, _id: id } : formData;
 
-			const data = await res.json();
+      const res = await fetch("/api/weighBridge/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
 
-			if (data.success !== false) {
-				alert("Record Saved!");
+      const data = await res.json();
 
-				// If it was a NEW record, redirect to its unique update URL with clean filename path
-				if (!id && data._id) {
-					navigate(`/weighBridge/${data._id}`);
-				}
-			} else {
-				setError(data.message);
-			}
-		} catch (err) {
-			setError("Failed to connect to server");
-		} finally {
-			setLoading(false);
-		}
-	};
+      if (data.success !== false) {
+        alert("Record Saved!");
 
-	const handleChange = (e) => {
-		const { id, value, type, checked } = e.target;
-		setFormData({
-			...formData,
-			[id]: type === "checkbox" ? checked : value,
-		});
-	};
+        // If it was a NEW record, redirect to its unique update URL with clean filename path
+        if (!id && data._id) {
+          navigate(`/weighBridge/${data._id}`);
+        }
+      } else {
+        setError(data.message);
+      }
+    } catch (err) {
+      setError("Failed to connect to server");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-	// Function to add a new empty field to a specific seal list
-	const handleAddSeal = (field) => {
-		setFormData({
-			...formData,
-			[field]: [...formData[field], ""],
-		});
-	};
+  const handleChange = (e) => {
+    if (!canEdit) return; // Explicit structural script blocker safety guard
+    const { id, value, type, checked } = e.target;
+    setFormData({
+      ...formData,
+      [id]: type === "checkbox" ? checked : value,
+    });
+  };
 
-	// Specialized handler for array fields (seals)
-	const handleSealChange = (index, value, field) => {
-		const updatedSeals = [...formData[field]];
-		updatedSeals[index] = value;
-		setFormData({ ...formData, [field]: updatedSeals });
-	};
+  // Function to add a new empty field to a specific seal list
+  const handleAddSeal = (field) => {
+    if (!canEdit) return; // Explicit structural script blocker safety guard
+    setFormData({
+      ...formData,
+      [field]: [...formData[field], ""],
+    });
+  };
 
-	const handleRemoveSeal = (index, field) => {
-		if (formData[field].length > 1) {
-			setFormData({
-				...formData,
-				[field]: formData[field].filter((_, i) => i !== index),
-			});
-		}
-	};
+  // Specialized handler for array fields (seals)
+  const handleSealChange = (index, value, field) => {
+    if (!canEdit) return; // Explicit structural script blocker safety guard
+    const updatedSeals = [...formData[field]];
+    updatedSeals[index] = value;
+    setFormData({ ...formData, [field]: updatedSeals });
+  };
+
+  const handleRemoveSeal = (index, field) => {
+    if (!canEdit) return; // Explicit structural script blocker safety guard
+    if (formData[field].length > 1) {
+      setFormData({
+        ...formData,
+        [field]: formData[field].filter((_, i) => i !== index),
+      });
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="p-8 text-center text-xs font-serif font-bold uppercase tracking-widest text-gray-600">
+        Syncing inspector document registry matrix streams...
+      </div>
+    );
+  }
+
 
 	// UI Styles (Sunken hover effect and subtle divider)
 	const inputStyle =
@@ -178,6 +198,7 @@ export default function WeighBridge() {
 									type="text"
 									required
 									value={formData.intertekSurveyor || ""}
+									disabled={!canEdit} 
 								/>
 							</div>
 							<div>

@@ -4,6 +4,7 @@ const {
 	getAllReceiptOfSealedSamplesReports,
 	getReceiptOfSealedSamplesReport,
 	getEveryonesReceiptOfSealedSamplesReports,
+	checkReceiptOfSealedSamplesOwnership,
 } = require("../controllers/receiptOfSealedSamplesController.js");
 const { verifyToken } = require("../utils/verifyUser.js");
 
@@ -14,7 +15,7 @@ const router = express.Router();
  * Unified camelCase structure tracking the global app baseline
  */
 
-router.post("/save", verifyToken, saveReceiptOfSealedSamplesReport);
+router.post("/save", verifyToken, checkReceiptOfSealedSamplesOwnership, saveReceiptOfSealedSamplesReport);
 router.get("/getall", verifyToken, getAllReceiptOfSealedSamplesReports);
 router.get("/get/:id", verifyToken, getReceiptOfSealedSamplesReport);
 router.get("/geteveryones", getEveryonesReceiptOfSealedSamplesReports);

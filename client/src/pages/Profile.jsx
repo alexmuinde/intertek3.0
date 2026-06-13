@@ -23,8 +23,26 @@ const documentsIndex = [
   { id: "weighBridge", name: "Weigh Bridge Record Form", path: "/weighBridge" },
   { id: "statementOfFacts", name: "Statement of Facts Sheet", path: "/statementOfFacts" },
   { id: "sealingReport", name: "Sealing Report Document", path: "/sealingReport" },
-  { id: "shoreTankQuantityReport", name: "Shore Tank Quantity Report", path: "/shoreTankQuantityReport" }
+  { id: "vesselExperienceFactor", name: "Vessel Experience Factor", path: "/vesselExperienceFactor" },
+  { id: "vesselDischargeStatus", name: "Vessel Discharge Status", path: "/vesselDischargeStatus" },
+  { id: "shoreTankQuantityReport", name: "Shore Tank Quantity Report", path: "/shoreTankQuantityReport" },
+  { id: "shoreTankMeasurementData", name: "Shore Tank Measurement Data", path: "/shoreTankMeasurementData" },
+  { id: "shoreTankCleanlinessReport", name: "Shore Tank Cleanliness Report", path: "/shoreTankCleanlinessReport" },
+  { id: "shipsTanksUllageReport", name: "Ships Tanks Ullage Report", path: "/shipsTanksUllageReport" },
+  { id: "rtwsSafetyChecklist", name: "RTWS Safety Checklist", path: "/rtwsSafetyChecklist" },
+  { id: "receiptOfSealedSamples", name: "Receipt of Sealed Samples", path: "/receiptOfSealedSamples" },
+  { id: "pumpingPressureLog", name: "Pumping Pressure Log", path: "/pumpingPressureLog" },
+  { id: "pipelineInspectionReport", name: "Pipeline Inspection Report", path: "/pipelineInspectionReport" },
+  { id: "noticeOfApparentDiscrepancy", name: "Notice of Apparent Discrepancy", path: "/noticeOfApparentDiscrepancy" },
+  { id: "letterOfProtestSlowRate", name: "Letter of Protest - Slow Rate", path: "/letterOfProtestSlowRate" },
+  { id: "letterOfProtestShoreFinalOutturnFigures", name: "Letter of Protest - Shore Final Outturn Figures", path: "/letterOfProtestShoreFinalOutturnFigures" },
+  { id: "letterOfProtestGeneral", name: "Letter of Protest - General", path: "/letterOfProtestGeneral" },
+  { id: "letterOfAssurance", name: "Letter of Assurance", path: "/letterOfAssurance" },
+  { id: "handOverReport", name: "Hand Over Report", path: "/handOverReport" },
+  { id: "endOfPipelineSampleReport", name: "End of Pipeline Sample Report", path: "/endOfPipelineSampleReport" },
+  { id: "dischargeProcedureSequence", name: "Discharge Procedure Sequence", path: "/dischargeProcedureSequence" }
 ];
+
 
 export default function Profile() {
   const { currentUser, loading, error } = useSelector((state) => state.user);
@@ -80,8 +98,30 @@ export default function Profile() {
       if (!currentUser?._id) return;
       try {
         setLoadingDocs(true);
-        const targetEndpoints = ["sealingReport", "statementOfFacts", "weighBridge", "shoreTankQuantityReport"];
-        
+        const targetEndpoints = [
+  "weighBridge",
+  "statementOfFacts",
+  "sealingReport",
+  "vesselExperienceFactor",
+  "vesselDischargeStatus",
+  "shoreTankQuantityReport",
+  "shoreTankMeasurementData",
+  "shoreTankCleanlinessReport",
+  "shipsTanksUllageReport",
+  "rtwsSafetyChecklist",
+  "receiptOfSealedSamples",
+  "pumpingPressureLog",
+  "pipelineInspectionReport",
+  "noticeOfApparentDiscrepancy",
+  "letterOfProtestSlowRate",
+  "letterOfProtestShoreFinalOutturnFigures",
+  "letterOfProtestGeneral",
+  "letterOfAssurance",
+  "handOverReport",
+  "endOfPipelineSampleReport",
+  "dischargeProcedureSequence"
+];
+
         const fetchPromises = targetEndpoints.map(endpoint =>
           fetch(`/api/${endpoint}/getall`).then(res => res.ok ? res.json() : [])
         );

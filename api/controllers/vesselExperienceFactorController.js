@@ -43,19 +43,20 @@ exports.getVesselExperienceFactorReport = async (request, response, next) => {
 				.json({ success: false, message: "Report not found" });
 		}
 
-		// Security boundary: Validate that the document's creator matches the requesting session
-		if (report.userReference.toString() !== request.user.id) {
-			return response.status(403).json({
-				success: false,
-				message: "Unauthorized access: You cannot view this report.",
-			});
-		}
+		// Dynamically compute ownership status instead of blocking with a 403 error
+		const isOwner = report.userReference.toString() === request.user.id;
 
-		response.status(200).json(report);
+		// Return the standardized structure matching your frontend logic
+		response.status(200).json({
+			success: true,
+			isOwner,
+			report
+		});
 	} catch (error) {
 		next(error);
 	}
 };
+
 
 // 4. Public/Admin endpoint to fetch every vessel experience factor report in the entire database
 exports.getEveryonesVesselExperienceFactorReports = async (
@@ -70,6 +71,34 @@ exports.getEveryonesVesselExperienceFactorReports = async (
 			.sort({ updatedAt: -1 });
 
 		response.status(200).json(documents);
+	} catch (error) {
+		next(error);
+	}
+};
+
+exports.checkVesselExperienceFactorReportOwnership = async (request, response, next) => {
+	try {
+		// If the request body contains a document ID, it means the user is trying to update an existing report
+		const documentId = request.body.id || request.params.id;
+		
+		if (documentId) {
+			const existingReport = await VesselExperienceFactor.findById(documentId);
+			
+			if (existingReport) {
+				// Verify if the userReference on the database record matches the active request token ID
+				if (existingReport.userReference.toString() !== request.user.id) {
+					return response.status(403).json({ 
+						success: false, 
+						message: "Unauthorized: You can only modify documents that you compiled." 
+					});
+				}
+			}
+		} else {
+			// If it's a completely new document being instantiated, automatically inject the current user's ID
+			request.body.userReference = request.user.id;
+		}
+		
+		next();
 	} catch (error) {
 		next(error);
 	}

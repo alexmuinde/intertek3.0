@@ -3,111 +3,138 @@ import { useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
 
 export default function HandOverReport() {
-	const { currentUser } = useSelector((state) => state.user);
-	const navigate = useNavigate();
-	const { id } = useParams();
+	  const { currentUser } = useSelector((state) => state.user);
+  const navigate = useNavigate();
+  const { id } = useParams();
 
-	const [error, setError] = useState(false);
-	const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [canEdit, setCanEdit] = useState(true); // Toggles view vs write configuration settings
 
-	const [formData, setFormData] = useState({
-		userReference: currentUser._id,
-		departmentName: "",
-		dateOfReport: "",
-		outgoingStaffName: "",
-		incomingStaffName: "",
-		staffHandingOverSignature: "",
-		staffReceivingHandOverSignature: "",
+  const [formData, setFormData] = useState({
+    userReference: currentUser?._id,
+    departmentName: "",
+    dateOfReport: "",
+    outgoingStaffName: "",
+    incomingStaffName: "",
+    staffHandingOverSignature: "",
+    staffReceivingHandOverSignature: "",
 
-		// Parallel array tracking states initialization for dynamic lines
-		assignedResponsibilities: [""],
+    // Parallel array tracking states initialization for dynamic lines
+    assignedResponsibilities: [""],
 
-		departmentHeadName: "",
-	});
+    departmentHeadName: "",
+  });
 
-	useEffect(() => {
-		if (id) {
-			const fetchReport = async () => {
-				setLoading(true);
-				try {
-					const res = await fetch(`/api/handOverReport/get/${id}`);
-					const data = await res.json();
-					if (data.success !== false) {
-						setFormData({
-							...data,
-							dateOfReport: data.dateOfReport
-								? data.dateOfReport.split("T")[0]
-								: "",
-						});
-					} else {
-						setError(data.message);
-					}
-				} catch (err) {
-					setError(true);
-				} finally {
-					setLoading(false);
-				}
-			};
-			fetchReport();
-		}
-	}, [id]);
+  // Balanced effect processing hook accommodating fallback or nested response layouts
+  useEffect(() => {
+    if (id) {
+      const fetchReport = async () => {
+        setLoading(true);
+        try {
+          const res = await fetch(`/api/handOverReport/get/${id}`);
+          const data = await res.json();
+          if (data.success !== false) {
+            // Check if backend uses the new wrapped style, otherwise fallback to root data object
+            const actualReport = data.report ? data.report : data;
+            
+            // Handle authorization validation check
+            const isOwnerCheck = data.isOwner !== undefined 
+              ? data.isOwner 
+              : (actualReport.userReference === currentUser?._id);
 
-	const handleSubmit = async (e) => {
-		e.preventDefault();
-		setLoading(true);
-		setError(false);
-		try {
-			const body = id ? { ...formData, _id: id } : formData;
-			const res = await fetch("/api/handOverReport/save", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify(body),
-			});
-			const data = await res.json();
-			if (data.success !== false) {
-				alert("Hand Over Report Saved Successfully!");
-				if (!id && data._id) {
-					navigate(`/handOverReport/${data._id}`);
-				}
-			} else {
-				setError(data.message);
-			}
-		} catch (err) {
-			setError("Failed to establish server communication channels");
-		} finally {
-			setLoading(false);
-		}
-	};
+            setCanEdit(isOwnerCheck);
 
-	const handleChange = (e) => {
-		const { id, value } = e.target;
-		setFormData({ ...formData, [id]: value });
-	};
+            setFormData({
+              ...actualReport,
+              dateOfReport: actualReport.dateOfReport
+                ? actualReport.dateOfReport.split("T")[0]
+                : "",
+            });
+          } else {
+            setError(data.message || "Failed to decode backend payload records");
+          }
+        } catch (err) {
+          setError("Network exception caught streaming record database files");
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchReport();
+    }
+  }, [id, currentUser?._id]);
 
-	// Dynamic primitive text row appender management utility
-	const handleAddResponsibilityRow = () => {
-		setFormData({
-			...formData,
-			assignedResponsibilities: [...formData.assignedResponsibilities, ""],
-		});
-	};
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!canEdit) return; // Explicit structural script blocker safety guard
+    setLoading(true);
+    setError(false);
+    try {
+      const body = id ? { ...formData, _id: id } : formData;
+      const res = await fetch("/api/handOverReport/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (data.success !== false) {
+        alert("Hand Over Report Saved Successfully!");
+        if (!id && data._id) {
+          // Strictly maintaining camelCase redirection route flow mapping cleanly with the app shell
+          navigate(`/handOverReport/${data._id}`);
+        }
+      } else {
+        setError(data.message);
+      }
+    } catch (err) {
+      setError("Failed to establish server communication channels");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-	const handleResponsibilityItemChange = (index, value) => {
-		const updatedList = [...formData.assignedResponsibilities];
-		updatedList[index] = value;
-		setFormData({ ...formData, assignedResponsibilities: updatedList });
-	};
+  const handleChange = (e) => {
+    if (!canEdit) return; // Explicit structural script blocker safety guard
+    const { id, value } = e.target;
+    setFormData({ ...formData, [id]: value });
+  };
 
-	const handleRemoveResponsibilityRow = (index) => {
-		if (formData.assignedResponsibilities.length > 1) {
-			setFormData({
-				...formData,
-				assignedResponsibilities: formData.assignedResponsibilities.filter(
-					(_, i) => i !== index,
-				),
-			});
-		}
-	};
+  // Dynamic primitive text row appender management utility
+  const handleAddResponsibilityRow = () => {
+    if (!canEdit) return; // Explicit structural script blocker safety guard
+    setFormData({
+      ...formData,
+      assignedResponsibilities: [...formData.assignedResponsibilities, ""],
+    });
+  };
+
+  const handleResponsibilityItemChange = (index, value) => {
+    if (!canEdit) return; // Explicit structural script blocker safety guard
+    const updatedList = [...formData.assignedResponsibilities];
+    updatedList[index] = value;
+    setFormData({ ...formData, assignedResponsibilities: updatedList });
+  };
+
+  const handleRemoveResponsibilityRow = (index) => {
+    if (!canEdit) return; // Explicit structural script blocker safety guard
+    if (formData.assignedResponsibilities.length > 1) {
+      setFormData({
+        ...formData,
+        assignedResponsibilities: formData.assignedResponsibilities.filter(
+          (_, i) => i !== index,
+        ),
+      });
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="p-8 text-center text-xs font-serif font-bold uppercase tracking-widest text-gray-600">
+        Syncing inspector document registry matrix streams...
+      </div>
+    );
+  }
+
 
 	const inputStyle =
 		"w-full bg-[#f8f6f6] p-2 border-b border-black outline-none transition-all hover:shadow-[inset_0_2px_5px_rgba(0,0,0,0.19)] focus:border focus:border-black text-xs font-serif font-medium";

@@ -4,6 +4,7 @@ const {
 	getAllShoreTankMeasurementDataReports,
 	getShoreTankMeasurementDataReport,
 	getEveryonesShoreTankMeasurementDataReports,
+	checkShoreTankMeasurementDataReportOwnership,
 } = require("../controllers/shoreTankMeasurementDataController.js");
 const { verifyToken } = require("../utils/verifyUser.js");
 
@@ -14,7 +15,7 @@ const router = express.Router();
  * Standardized camelCase endpoints mapping cleanly with the app shell
  */
 
-router.post("/save", verifyToken, saveShoreTankMeasurementDataReport);
+router.post("/save", verifyToken, checkShoreTankMeasurementDataReportOwnership, saveShoreTankMeasurementDataReport);
 router.get("/getall", verifyToken, getAllShoreTankMeasurementDataReports);
 router.get("/get/:id", verifyToken, getShoreTankMeasurementDataReport);
 router.get("/geteveryones", getEveryonesShoreTankMeasurementDataReports);

@@ -4,6 +4,7 @@ const {
 	getAllStatementOfFactsReports,
 	getStatementOfFactsReport,
 	getEveryonesStatementOfFactsReports,
+	checkStatementOfFactsOwnership,
 } = require("../controllers/statementOfFactsController.js");
 const { verifyToken } = require("../utils/verifyUser.js");
 
@@ -14,7 +15,7 @@ const router = express.Router();
  * Standardized camelCase pathing matching the ecosystem baseline
  */
 
-router.post("/save", verifyToken, saveStatementOfFactsReport);
+router.post("/save", verifyToken, checkStatementOfFactsOwnership, saveStatementOfFactsReport);
 router.get("/getall", verifyToken, getAllStatementOfFactsReports);
 router.get("/get/:id", verifyToken, getStatementOfFactsReport);
 router.get("/geteveryones", getEveryonesStatementOfFactsReports);

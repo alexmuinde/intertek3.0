@@ -4,11 +4,7 @@ import { useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
 
 // Standardized brutalist styling layout rules mapped across your platform
-const inputStyle =
-  "w-full bg-[#f8f6f6] p-2 border-b border-black outline-none transition-all hover:shadow-[inset_0_2px_5px_rgba(0,0,0,0.19)] focus:border focus:shadow-[2px_2px_rgba(0,0,0,0.19)] text-xs font-serif font-medium disabled:opacity-70 disabled:bg-gray-100 disabled:cursor-not-allowed";
 
-const labelStyle =
-  "block text-[11px] pl-1 mb-1 text-gray-700 font-bold tracking-wide uppercase font-serif";
 
 export default function SealingReport() {
   const { currentUser } = useSelector((state) => state.user);
@@ -19,156 +15,156 @@ export default function SealingReport() {
   const [loading, setLoading] = useState(false);
   const [canEdit, setCanEdit] = useState(true); // Toggles view vs write configuration settings
 
-  const [formData, setFormData] = useState({
-    userReference: currentUser?._id,
-    vesselName: "",
-    portName: "",
-    dateOfReport: "",
-    cargoDescription: "",
-    sealingLocations: [""],
-    sealNumbers: [""],
-    intertekInspector: "",
-    representatives: [
-      {
-        representativeName: "",
-        representativeIdentification: "",
-        representativeEmail: "",
-      },
-    ],
-  });
+	const [formData, setFormData] = useState({
+		userReference: currentUser?._id,
+		vesselName: "",
+		portName: "",
+		dateOfReport: "",
+		cargoDescription: "",
+		sealingLocations: [""],
+		sealNumbers: [""],
+		intertekInspector: "",
+		representatives: [
+		{
+			representativeName: "",
+			representativeIdentification: "",
+			representativeEmail: "",
+		},
+		],
+	});
 
-  // Balanced effect processing hook accommodating { report, isOwner } data packaging structures
-  useEffect(() => {
-    if (id) {
-      const fetchReport = async () => {
-        setLoading(true);
-        try {
-          const res = await fetch(`/api/sealingReport/get/${id}`);
-          const data = await res.json();
-          
-          if (data.success !== false && data.report) {
-            // Pluck inner record body object properties securely
-            const actualReport = data.report;
-            setCanEdit(data.isOwner); // Bind workspace authorization layer dynamically
+	// Balanced effect processing hook accommodating { report, isOwner } data packaging structures
+	useEffect(() => {
+		if (id) {
+		const fetchReport = async () => {
+			setLoading(true);
+			try {
+			const res = await fetch(`/api/sealingReport/get/${id}`);
+			const data = await res.json();
+			
+			if (data.success !== false && data.report) {
+				// Pluck inner record body object properties securely
+				const actualReport = data.report;
+				setCanEdit(data.isOwner); // Bind workspace authorization layer dynamically
 
-            setFormData({
-              ...actualReport,
-              dateOfReport: actualReport.dateOfReport
-                ? actualReport.dateOfReport.split("T")[0]
-                : "",
-            });
-          } else {
-            setError(data.message || "Failed to decode backend payload records");
-          }
-        } catch (err) {
-          setError("Network exception caught streaming record database files");
-        } finally {
-          setLoading(false);
-        }
-      };
-      fetchReport();
-    }
-  }, [id]);
-const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!canEdit) return; // Explicit structural script blocker safety guard
-    setLoading(true);
-    setError(false);
-    try {
-      const body = id ? { ...formData, _id: id } : formData;
-      const res = await fetch("/api/sealingReport/save", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const data = await res.json();
-      if (data.success !== false) {
-        alert("Record Saved Successfully!");
-        if (!id && data._id) {
-          navigate(`/sealingReport/${data._id}`);
-        }
-      } else {
-        setError(data.message);
-      }
-    } catch (err) {
-      setError("Failed to establish server communication channels");
-    } finally {
-      setLoading(false);
-    }
-  };
+				setFormData({
+				...actualReport,
+				dateOfReport: actualReport.dateOfReport
+					? actualReport.dateOfReport.split("T")[0]
+					: "",
+				});
+			} else {
+				setError(data.message || "Failed to decode backend payload records");
+			}
+			} catch (err) {
+			setError("Network exception caught streaming record database files");
+			} finally {
+			setLoading(false);
+			}
+		};
+		fetchReport();
+		}
+	}, [id]);
+	const handleSubmit = async (e) => {
+		e.preventDefault();
+		if (!canEdit) return; // Explicit structural script blocker safety guard
+		setLoading(true);
+		setError(false);
+		try {
+		const body = id ? { ...formData, _id: id } : formData;
+		const res = await fetch("/api/sealingReport/save", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(body),
+		});
+		const data = await res.json();
+		if (data.success !== false) {
+			alert("Record Saved Successfully!");
+			if (!id && data._id) {
+			navigate(`/sealingReport/${data._id}`);
+			}
+		} else {
+			setError(data.message);
+		}
+		} catch (err) {
+		setError("Failed to establish server communication channels");
+		} finally {
+		setLoading(false);
+		}
+	};
 
-  const handleChange = (e) => {
-    const { id, value } = e.target;
-    setFormData({ ...formData, [id]: value });
-  };
+	const handleChange = (e) => {
+		const { id, value } = e.target;
+		setFormData({ ...formData, [id]: value });
+	};
 
   // Dynamic Array Modifiers - Blocked locally if canEdit is toggled off
-  const handleAddSealingRow = () => {
-    if (!canEdit) return;
-    setFormData({
-      ...formData,
-      sealingLocations: [...formData.sealingLocations, ""],
-      sealNumbers: [...formData.sealNumbers, ""],
-    });
-  };
+	const handleAddSealingRow = () => {
+		if (!canEdit) return;
+		setFormData({
+		...formData,
+		sealingLocations: [...formData.sealingLocations, ""],
+		sealNumbers: [...formData.sealNumbers, ""],
+		});
+	};
 
-  const handleSealingItemChange = (index, value, field) => {
-    if (!canEdit) return;
-    const updatedList = [...formData[field]];
-    updatedList[index] = value;
-    setFormData({ ...formData, [field]: updatedList });
-  };
+	const handleSealingItemChange = (index, value, field) => {
+		if (!canEdit) return;
+		const updatedList = [...formData[field]];
+		updatedList[index] = value;
+		setFormData({ ...formData, [field]: updatedList });
+	};
 
-  const handleRemoveSealingRow = (index) => {
-    if (!canEdit) return;
-    if (formData.sealingLocations.length > 1) {
-      setFormData({
-        ...formData,
-        sealingLocations: formData.sealingLocations.filter((_, i) => i !== index),
-        sealNumbers: formData.sealNumbers.filter((_, i) => i !== index),
-      });
-    }
-  };
+	const handleRemoveSealingRow = (index) => {
+		if (!canEdit) return;
+		if (formData.sealingLocations.length > 1) {
+		setFormData({
+			...formData,
+			sealingLocations: formData.sealingLocations.filter((_, i) => i !== index),
+			sealNumbers: formData.sealNumbers.filter((_, i) => i !== index),
+		});
+		}
+	};
 
-  const handleAddRepresentativeRow = () => {
-    if (!canEdit) return;
-    setFormData({
-      ...formData,
-      representatives: [
-        ...formData.representatives,
-        {
-          representativeName: "",
-          representativeIdentification: "",
-          representativeEmail: "",
-        },
-      ],
-    });
-  };
+	const handleAddRepresentativeRow = () => {
+		if (!canEdit) return;
+		setFormData({
+		...formData,
+		representatives: [
+			...formData.representatives,
+			{
+			representativeName: "",
+			representativeIdentification: "",
+			representativeEmail: "",
+			},
+		],
+		});
+	};
 
-  const handleRepresentativeRowChange = (index, field, value) => {
-    if (!canEdit) return;
-    const updatedRepresentatives = [...formData.representatives];
-    updatedRepresentatives[index][field] = value;
-    setFormData({ ...formData, representatives: updatedRepresentatives });
-  };
+	const handleRepresentativeRowChange = (index, field, value) => {
+		if (!canEdit) return;
+		const updatedRepresentatives = [...formData.representatives];
+		updatedRepresentatives[index][field] = value;
+		setFormData({ ...formData, representatives: updatedRepresentatives });
+	};
 
-  const handleRemoveRepresentativeRow = (index) => {
-    if (!canEdit) return;
-    if (formData.representatives.length > 1) {
-      setFormData({
-        ...formData,
-        representatives: formData.representatives.filter((_, i) => i !== index),
-      });
-    }
-  };
+	const handleRemoveRepresentativeRow = (index) => {
+		if (!canEdit) return;
+		if (formData.representatives.length > 1) {
+		setFormData({
+			...formData,
+			representatives: formData.representatives.filter((_, i) => i !== index),
+		});
+		}
+	};
 
-  if (loading) {
-    return (
-      <div className="p-8 text-center text-xs font-serif font-bold uppercase tracking-widest text-gray-600">
-        Syncing inspector document registry matrix streams...
-      </div>
-    );
-  }
+	if (loading) {
+		return (
+		<div className="p-8 text-center text-xs font-serif font-bold uppercase tracking-widest text-gray-600">
+			Syncing inspector document registry matrix streams...
+		</div>
+		);
+	}
 
 
 	const inputStyle =

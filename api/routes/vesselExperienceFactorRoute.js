@@ -4,6 +4,7 @@ const {
 	getVesselExperienceFactorReport,
 	getAllVesselExperienceFactorReports,
 	getEveryonesVesselExperienceFactorReports,
+	checkVesselExperienceFactorReportOwnership, // Middleware to validate write permissions
 } = require("../controllers/vesselExperienceFactorController.js");
 const { verifyToken } = require("../utils/verifyUser.js");
 
@@ -15,7 +16,7 @@ const router = express.Router();
  */
 
 // Save or Update a report
-router.post("/save", verifyToken, saveVesselExperienceFactorReport);
+router.post("/save", verifyToken, checkVesselExperienceFactorReportOwnership, saveVesselExperienceFactorReport);
 
 // Get all reports for the logged-in user (Dashboard)
 router.get("/getall", verifyToken, getAllVesselExperienceFactorReports);

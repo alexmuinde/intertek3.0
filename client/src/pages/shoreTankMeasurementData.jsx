@@ -3,177 +3,207 @@ import { useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
 
 export default function ShoreTankMeasurementData() {
-	const { currentUser } = useSelector((state) => state.user);
-	const navigate = useNavigate();
-	const { id } = useParams();
+	    const { currentUser } = useSelector((state) => state.user);
+  const navigate = useNavigate();
+  const { id } = useParams();
 
-	const [error, setError] = useState(false);
-	const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [canEdit, setCanEdit] = useState(true); // Toggles view vs write configuration settings
 
-	const [formData, setFormData] = useState({
-		userReference: currentUser._id,
-		dateOfReport: "",
-		installationName: "",
-		tankNumberHeader: "",
-		vesselName: "",
-		accountName: "",
-		cargoGrade: "",
+  const [formData, setFormData] = useState({
+    userReference: currentUser?._id,
+    dateOfReport: "",
+    installationName: "",
+    tankNumberHeader: "",
+    vesselName: "",
+    accountName: "",
+    cargoGrade: "",
 
-		// Parallel array lists initialized for multiple metric card tracks
-		tankNumbers: [""],
-		overallDips: [""],
-		productDips: [""],
-		temperatures: [""],
-		timesOfMeasurements: [""],
+    // Parallel array lists initialized for multiple metric card tracks
+    tankNumbers: [""],
+    overallDips: [""],
+    productDips: [""],
+    temperatures: [""],
+    timesOfMeasurements: [""],
 
-		isBeforeDischarge: false,
-		isAfterDischarge: false,
-		isUpperSample: false,
-		isMiddleSample: false,
-		isLowerSample: false,
-		isRunningSample: false,
-		isProfileSample: false,
-		numberOfSamples: "",
+    isBeforeDischarge: false,
+    isAfterDischarge: false,
+    isUpperSample: false,
+    isMiddleSample: false,
+    isLowerSample: false,
+    isRunningSample: false,
+    isProfileSample: false,
+    numberOfSamples: "",
 
-		isSamplingForDensity: false,
-		isSamplingForAnalysis: false,
-		isSamplingForRetention: false,
+    isSamplingForDensity: false,
+    isSamplingForAnalysis: false,
+    isSamplingForRetention: false,
 
-		measurementRemarks: "",
-		intertekInspector: "",
-		representatives: [
-			{
-				representativeName: "",
-				representativeIdentification: "",
-				representativeEmail: "",
-			},
-		],
-	});
+    measurementRemarks: "",
+    intertekInspector: "",
+    representatives: [
+      {
+        representativeName: "",
+        representativeIdentification: "",
+        representativeEmail: "",
+      },
+    ],
+  });
 
-	useEffect(() => {
-		if (id) {
-			const fetchReport = async () => {
-				setLoading(true);
-				try {
-					const res = await fetch(`/api/shoreTankMeasurementData/get/${id}`);
-					const data = await res.json();
-					if (data.success !== false) {
-						setFormData({
-							...data,
-							dateOfReport: data.dateOfReport
-								? data.dateOfReport.split("T")[0]
-								: "",
-						});
-					} else {
-						setError(data.message);
-					}
-				} catch (err) {
-					setError(true);
-				} finally {
-					setLoading(false);
-				}
-			};
-			fetchReport();
-		}
-	}, [id]);
+  // Balanced effect processing hook accommodating fallback or nested response layouts
+  useEffect(() => {
+    if (id) {
+      const fetchReport = async () => {
+        setLoading(true);
+        try {
+          const res = await fetch(`/api/shoreTankMeasurementData/get/${id}`);
+          const data = await res.json();
+          if (data.success !== false) {
+            // Check if backend uses the new wrapped style, otherwise fallback to root data object
+            const actualReport = data.report ? data.report : data;
+            
+            // Handle authorization validation check
+            const isOwnerCheck = data.isOwner !== undefined 
+              ? data.isOwner 
+              : (actualReport.userReference === currentUser?._id);
 
-	const handleSubmit = async (e) => {
-		e.preventDefault();
-		setLoading(true);
-		setError(false);
-		try {
-			const body = id ? { ...formData, _id: id } : formData;
-			const res = await fetch("/api/shoreTankMeasurementData/save", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify(body),
-			});
-			const data = await res.json();
-			if (data.success !== false) {
-				alert("Record Saved Successfully!");
-				if (!id && data._id) {
-					navigate(`/shoreTankMeasurementData/${data._id}`);
-				}
-			} else {
-				setError(data.message);
-			}
-		} catch (err) {
-			setError("Failed to establish server communication channels");
-		} finally {
-			setLoading(false);
-		}
-	};
+            setCanEdit(isOwnerCheck);
 
-	const handleChange = (e) => {
-		const { id, value, type, checked } = e.target;
-		setFormData({
-			...formData,
-			[id]: type === "checkbox" ? checked : value,
-		});
-	};
+            setFormData({
+              ...actualReport,
+              dateOfReport: actualReport.dateOfReport
+                ? actualReport.dateOfReport.split("T")[0]
+                : "",
+            });
+          } else {
+            setError(data.message || "Failed to decode backend payload records");
+          }
+        } catch (err) {
+          setError("Network exception caught streaming record database files");
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchReport();
+    }
+  }, [id, currentUser?._id]);
 
-	// Parallel Arrays Row Appender Utility for Dip Tickets
-	const handleAddMeasurementRecord = () => {
-		setFormData({
-			...formData,
-			tankNumbers: [...formData.tankNumbers, ""],
-			overallDips: [...formData.overallDips, ""],
-			productDips: [...formData.productDips, ""],
-			temperatures: [...formData.temperatures, ""],
-			timesOfMeasurements: [...formData.timesOfMeasurements, ""],
-		});
-	};
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!canEdit) return; // Explicit structural script blocker safety guard
+    setLoading(true);
+    setError(false);
+    try {
+      const body = id ? { ...formData, _id: id } : formData;
+      const res = await fetch("/api/shoreTankMeasurementData/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (data.success !== false) {
+        alert("Record Saved Successfully!");
+        if (!id && data._id) {
+          navigate(`/shoreTankMeasurementData/${data._id}`);
+        }
+      } else {
+        setError(data.message);
+      }
+    } catch (err) {
+      setError("Failed to establish server communication channels");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-	const handleMeasurementItemChange = (index, value, field) => {
-		const updatedList = [...formData[field]];
-		updatedList[index] = value;
-		setFormData({ ...formData, [field]: updatedList });
-	};
+  const handleChange = (e) => {
+    if (!canEdit) return; // Explicit structural script blocker safety guard
+    const { id, value, type, checked } = e.target;
+    setFormData({
+      ...formData,
+      [id]: type === "checkbox" ? checked : value,
+    });
+  };
 
-	const handleRemoveMeasurementRecord = (index) => {
-		if (formData.tankNumbers.length > 1) {
-			setFormData({
-				...formData,
-				tankNumbers: formData.tankNumbers.filter((_, i) => i !== index),
-				overallDips: formData.overallDips.filter((_, i) => i !== index),
-				productDips: formData.productDips.filter((_, i) => i !== index),
-				temperatures: formData.temperatures.filter((_, i) => i !== index),
-				timesOfMeasurements: formData.timesOfMeasurements.filter(
-					(_, i) => i !== index,
-				),
-			});
-		}
-	};
+  // Parallel Arrays Row Appender Utility for Dip Tickets
+  const handleAddMeasurementRecord = () => {
+    if (!canEdit) return; // Explicit structural script blocker safety guard
+    setFormData({
+      ...formData,
+      tankNumbers: [...formData.tankNumbers, ""],
+      overallDips: [...formData.overallDips, ""],
+      productDips: [...formData.productDips, ""],
+      temperatures: [...formData.temperatures, ""],
+      timesOfMeasurements: [...formData.timesOfMeasurements, ""],
+    });
+  };
 
-	// Grouped Representative Object Dynamic Array Handlers
-	const handleAddRepresentativeRow = () => {
-		setFormData({
-			...formData,
-			representatives: [
-				...formData.representatives,
-				{
-					representativeName: "",
-					representativeIdentification: "",
-					representativeEmail: "",
-				},
-			],
-		});
-	};
+  const handleMeasurementItemChange = (index, value, field) => {
+    if (!canEdit) return; // Explicit structural script blocker safety guard
+    const updatedList = [...formData[field]];
+    updatedList[index] = value;
+    setFormData({ ...formData, [field]: updatedList });
+  };
 
-	const handleRepresentativeRowChange = (index, field, value) => {
-		const updatedRepresentatives = [...formData.representatives];
-		updatedRepresentatives[index][field] = value;
-		setFormData({ ...formData, representatives: updatedRepresentatives });
-	};
+  const handleRemoveMeasurementRecord = (index) => {
+    if (!canEdit) return; // Explicit structural script blocker safety guard
+    if (formData.tankNumbers.length > 1) {
+      setFormData({
+        ...formData,
+        tankNumbers: formData.tankNumbers.filter((_, i) => i !== index),
+        overallDips: formData.overallDips.filter((_, i) => i !== index),
+        productDips: formData.productDips.filter((_, i) => i !== index),
+        temperatures: formData.temperatures.filter((_, i) => i !== index),
+        timesOfMeasurements: formData.timesOfMeasurements.filter(
+          (_, i) => i !== index,
+        ),
+      });
+    }
+  };
 
-	const handleRemoveRepresentativeRow = (index) => {
-		if (formData.representatives.length > 1) {
-			setFormData({
-				...formData,
-				representatives: formData.representatives.filter((_, i) => i !== index),
-			});
-		}
-	};
+  // Grouped Representative Object Dynamic Array Handlers
+  const handleAddRepresentativeRow = () => {
+    if (!canEdit) return; // Explicit structural script blocker safety guard
+    setFormData({
+      ...formData,
+      representatives: [
+        ...formData.representatives,
+        {
+          representativeName: "",
+          representativeIdentification: "",
+          representativeEmail: "",
+        },
+      ],
+    });
+  };
+
+  const handleRepresentativeRowChange = (index, field, value) => {
+    if (!canEdit) return; // Explicit structural script blocker safety guard
+    const updatedRepresentatives = [...formData.representatives];
+    updatedRepresentatives[index][field] = value;
+    setFormData({ ...formData, representatives: updatedRepresentatives });
+  };
+
+  const handleRemoveRepresentativeRow = (index) => {
+    if (!canEdit) return; // Explicit structural script blocker safety guard
+    if (formData.representatives.length > 1) {
+      setFormData({
+        ...formData,
+        representatives: formData.representatives.filter((_, i) => i !== index),
+      });
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="p-8 text-center text-xs font-serif font-bold uppercase tracking-widest text-gray-600">
+        Syncing inspector document registry matrix streams...
+      </div>
+    );
+  }
+
+
 
 	const inputStyle =
 		"w-full bg-[#f8f6f6] p-2 border-b border-black outline-none transition-all hover:shadow-[inset_0_2px_5px_rgba(0,0,0,0.19)] focus:border focus:shadow-[2px_2px_rgba(0,0,0,0.19)] text-xs font-serif font-medium";

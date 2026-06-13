@@ -4,13 +4,14 @@ const {
 	getShipsTanksUllageReport,
 	getAllShipsTanksUllageReports,
 	getEveryonesShipsTanksUllageReports,
+	checkShipsTanksUllageReportOwnership,
 } = require("../controllers/shipsTanksUllageReportController.js");
 const { verifyToken } = require("../utils/verifyUser.js");
 
 const router = express.Router();
 
 // Strict explicit structural mount path strings
-router.post("/save", verifyToken, saveShipsTanksUllageReport);
+router.post("/save", verifyToken, checkShipsTanksUllageReportOwnership, saveShipsTanksUllageReport);
 router.get("/getall", verifyToken, getAllShipsTanksUllageReports);
 router.get("/get/:id", verifyToken, getShipsTanksUllageReport);
 router.get("/geteveryones", verifyToken, getEveryonesShipsTanksUllageReports);

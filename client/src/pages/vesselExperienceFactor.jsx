@@ -3,246 +3,275 @@ import { useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
 
 export default function VesselExperienceFactor() {
-	const { currentUser } = useSelector((state) => state.user);
-	const navigate = useNavigate();
-	const { id } = useParams();
+	  const { currentUser } = useSelector((state) => state.user);
+  const navigate = useNavigate();
+  const { id } = useParams();
 
-	const [error, setError] = useState(false);
-	const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [canEdit, setCanEdit] = useState(true); // Toggles view vs write configuration settings
 
-	const [formData, setFormData] = useState({
-		userReference: currentUser._id,
-		vesselName: "",
-		dateOfReport: "",
-		portName: "",
+  const [formData, setFormData] = useState({
+    userReference: currentUser?._id,
+    vesselName: "",
+    dateOfReport: "",
+    portName: "",
 
-		voyageNumbers: [""],
-		datesOfVoyages: [""],
-		loadPorts: [""],
-		cargoDescriptions: [""],
-		shipsFigures: [""],
-		shoreFigures: [""],
-		ratiosShipShore: [""],
-		isQualifyingVoyages: [""],
+    voyageNumbers: [""],
+    datesOfVoyages: [""],
+    loadPorts: [""],
+    cargoDescriptions: [""],
+    shipsFigures: [""],
+    shoreFigures: [""],
+    ratiosShipShore: [""],
+    isQualifyingVoyages: [""],
 
-		shipsFigureTotals: "",
-		shoreFigureTotals: "",
-		averageRatio: "",
-		upperLimit: "",
-		lowerLimit: "",
-		shipsQualifyingTotals: "",
-		shoreQualifyingTotals: "",
-		vesselExperienceFactor: "",
+    shipsFigureTotals: "",
+    shoreFigureTotals: "",
+    averageRatio: "",
+    upperLimit: "",
+    lowerLimit: "",
+    shipsQualifyingTotals: "",
+    shoreQualifyingTotals: "",
+    vesselExperienceFactor: "",
 
-		intertekInspector: "",
-		// Grouped state blueprint for adding full single representative items
-		representatives: [
-			{
-				representativeName: "",
-				representativeIdentification: "",
-				representativeEmail: "",
-			},
-		],
-	});
+    intertekInspector: "",
+    // Grouped state blueprint for adding full single representative items
+    representatives: [
+      {
+        representativeName: "",
+        representativeIdentification: "",
+        representativeEmail: "",
+      },
+    ],
+  });
 
-	// --- DYNAMIC RUNTIME MATHEMATICAL AGGREGATIONS ENGINE ---
-	useEffect(() => {
-		const updatedRatios = formData.shipsFigures.map((shipVal, index) => {
-			const ship = parseFloat(shipVal);
-			const shore = parseFloat(formData.shoreFigures[index]);
-			if (ship && shore && shore !== 0) {
-				return parseFloat((ship / shore).toFixed(4));
-			}
-			return 0;
-		});
+  // --- DYNAMIC RUNTIME MATHEMATICAL AGGREGATIONS ENGINE ---
+  useEffect(() => {
+    const updatedRatios = formData.shipsFigures.map((shipVal, index) => {
+      const ship = parseFloat(shipVal);
+      const shore = parseFloat(formData.shoreFigures[index]);
+      if (ship && shore && shore !== 0) {
+        return parseFloat((ship / shore).toFixed(4));
+      }
+      return 0;
+    });
 
-		const totalShip = formData.shipsFigures.reduce(
-			(acc, curr) => acc + (parseFloat(curr) || 0),
-			0,
-		);
-		const totalShore = formData.shoreFigures.reduce(
-			(acc, curr) => acc + (parseFloat(curr) || 0),
-			0,
-		);
+    const totalShip = formData.shipsFigures.reduce(
+      (acc, curr) => acc + (parseFloat(curr) || 0),
+      0,
+    );
+    const totalShore = formData.shoreFigures.reduce(
+      (acc, curr) => acc + (parseFloat(curr) || 0),
+      0,
+    );
 
-		let avgRatio = 0;
-		const validRatios = updatedRatios.filter((val) => val > 0);
-		if (validRatios.length > 0) {
-			avgRatio = parseFloat(
-				(
-					validRatios.reduce((acc, curr) => acc + curr, 0) / validRatios.length
-				).toFixed(4),
-			);
-		}
+    let avgRatio = 0;
+    const validRatios = updatedRatios.filter((val) => val > 0);
+    if (validRatios.length > 0) {
+      avgRatio = parseFloat(
+        (
+          validRatios.reduce((acc, curr) => acc + curr, 0) / validRatios.length
+        ).toFixed(4),
+      );
+    }
 
-		const upper = avgRatio > 0 ? parseFloat((avgRatio + 0.0003).toFixed(4)) : 0;
-		const lower = avgRatio > 0 ? parseFloat((avgRatio - 0.0003).toFixed(4)) : 0;
+    const upper = avgRatio > 0 ? parseFloat((avgRatio + 0.0003).toFixed(4)) : 0;
+    const lower = avgRatio > 0 ? parseFloat((avgRatio - 0.0003).toFixed(4)) : 0;
 
-		let qualifyingShipTotal = 0;
-		let qualifyingShoreTotal = 0;
+    let qualifyingShipTotal = 0;
+    let qualifyingShoreTotal = 0;
 
-		formData.isQualifyingVoyages.forEach((flag, index) => {
-			if (flag && flag.toLowerCase() === "y") {
-				qualifyingShipTotal += parseFloat(formData.shipsFigures[index]) || 0;
-				qualifyingShoreTotal += parseFloat(formData.shoreFigures[index]) || 0;
-			}
-		});
+    formData.isQualifyingVoyages.forEach((flag, index) => {
+      if (flag && flag.toLowerCase() === "y") {
+        qualifyingShipTotal += parseFloat(formData.shipsFigures[index]) || 0;
+        qualifyingShoreTotal += parseFloat(formData.shoreFigures[index]) || 0;
+      }
+    });
 
-		const vefCalculated =
-			qualifyingShoreTotal !== 0
-				? parseFloat((qualifyingShipTotal / qualifyingShoreTotal).toFixed(4))
-				: 0;
+    const vefCalculated =
+      qualifyingShoreTotal !== 0
+        ? parseFloat((qualifyingShipTotal / qualifyingShoreTotal).toFixed(4))
+        : 0;
 
-		setFormData((prevState) => ({
-			...prevState,
-			ratiosShipShore: updatedRatios,
-			shipsFigureTotals: totalShip,
-			shoreFigureTotals: totalShore,
-			averageRatio: avgRatio,
-			upperLimit: upper,
-			lowerLimit: lower,
-			shipsQualifyingTotals: qualifyingShipTotal,
-			shoreQualifyingTotals: qualifyingShoreTotal,
-			vesselExperienceFactor: vefCalculated,
-		}));
-	}, [
-		formData.shipsFigures,
-		formData.shoreFigures,
-		formData.isQualifyingVoyages,
-	]);
+    setFormData((prevState) => ({
+      ...prevState,
+      ratiosShipShore: updatedRatios,
+      shipsFigureTotals: totalShip,
+      shoreFigureTotals: totalShore,
+      averageRatio: avgRatio,
+      upperLimit: upper,
+      lowerLimit: lower,
+      shipsQualifyingTotals: qualifyingShipTotal,
+      shoreQualifyingTotals: qualifyingShoreTotal,
+      vesselExperienceFactor: vefCalculated,
+    }));
+  }, [
+    formData.shipsFigures,
+    formData.shoreFigures,
+    formData.isQualifyingVoyages,
+  ]);
 
-	useEffect(() => {
-		if (id) {
-			const fetchReport = async () => {
-				setLoading(true);
-				try {
-					const res = await fetch(`/api/vesselExperienceFactor/get/${id}`);
-					const data = await res.json();
-					if (data.success !== false) {
-						setFormData({
-							...data,
-							dateOfReport: data.dateOfReport
-								? data.dateOfReport.split("T")[0]
-								: "",
-							datesOfVoyages: data.datesOfVoyages.map((d) =>
-								d ? d.split("T")[0] : "",
-							),
-						});
-					} else {
-						setError(data.message);
-					}
-				} catch (err) {
-					setError(true);
-				} finally {
-					setLoading(false);
-				}
-			};
-			fetchReport();
-		}
-	}, [id]);
+  // Balanced effect processing hook accommodating fallback or nested response layouts
+  useEffect(() => {
+    if (id) {
+      const fetchReport = async () => {
+        setLoading(true);
+        try {
+          const res = await fetch(`/api/vesselExperienceFactor/get/${id}`);
+          const data = await res.json();
+          if (data.success !== false) {
+            // Check if backend uses the new wrapped style, otherwise fallback to root data object
+            const actualReport = data.report ? data.report : data;
+            
+            // Handle authorization validation check
+            const isOwnerCheck = data.isOwner !== undefined 
+              ? data.isOwner 
+              : (actualReport.userReference === currentUser?._id);
 
-	const handleSubmit = async (e) => {
-		e.preventDefault();
-		setLoading(true);
-		setError(false);
-		try {
-			const body = id ? { ...formData, _id: id } : formData;
-			const res = await fetch("/api/vesselExperienceFactor/save", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify(body),
-			});
-			const data = await res.json();
-			if (data.success !== false) {
-				alert("Record Saved Successfully!");
-				if (!id && data._id) {
-					navigate(`/vesselExperienceFactor/${data._id}`);
-				}
-			} else {
-				setError(data.message);
-			}
-		} catch (err) {
-			setError("Failed to establish server communication channels");
-		} finally {
-			setLoading(false);
-		}
-	};
+            setCanEdit(isOwnerCheck);
 
-	const handleChange = (e) => {
-		const { id, value } = e.target;
-		setFormData({ ...formData, [id]: value });
-	};
+            setFormData({
+              ...actualReport,
+              dateOfReport: actualReport.dateOfReport
+                ? actualReport.dateOfReport.split("T")[0]
+                : "",
+              datesOfVoyages: actualReport.datesOfVoyages
+                ? actualReport.datesOfVoyages.map((d) => (d ? d.split("T")[0] : ""))
+                : [""],
+            });
+          } else {
+            setError(data.message || "Failed to decode backend payload records");
+          }
+        } catch (err) {
+          setError("Network exception caught streaming record database files");
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchReport();
+    }
+  }, [id, currentUser?._id]);
 
-	const handleAddVoyageRecord = () => {
-		setFormData({
-			...formData,
-			voyageNumbers: [...formData.voyageNumbers, ""],
-			datesOfVoyages: [...formData.datesOfVoyages, ""],
-			loadPorts: [...formData.loadPorts, ""],
-			cargoDescriptions: [...formData.cargoDescriptions, ""],
-			shipsFigures: [...formData.shipsFigures, ""],
-			shoreFigures: [...formData.shoreFigures, ""],
-			ratiosShipShore: [...formData.ratiosShipShore, 0],
-			isQualifyingVoyages: [...formData.isQualifyingVoyages, ""],
-		});
-	};
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!canEdit) return; // Explicit structural script blocker safety guard
+    setLoading(true);
+    setError(false);
+    try {
+      const body = id ? { ...formData, _id: id } : formData;
+      const res = await fetch("/api/vesselExperienceFactor/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (data.success !== false) {
+        alert("Record Saved Successfully!");
+        if (!id && data._id) {
+          navigate(`/vesselExperienceFactor/${data._id}`);
+        }
+      } else {
+        setError(data.message);
+      }
+    } catch (err) {
+      setError("Failed to establish server communication channels");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-	const handleVoyageItemChange = (index, value, field) => {
-		const updatedList = [...formData[field]];
-		updatedList[index] = value;
-		setFormData({ ...formData, [field]: updatedList });
-	};
+  const handleChange = (e) => {
+    if (!canEdit) return; // Explicit structural script blocker safety guard
+    const { id, value } = e.target;
+    setFormData({ ...formData, [id]: value });
+  };
 
-	const handleRemoveVoyageRecord = (index) => {
-		if (formData.voyageNumbers.length > 1) {
-			setFormData({
-				...formData,
-				voyageNumbers: formData.voyageNumbers.filter((_, i) => i !== index),
-				datesOfVoyages: formData.datesOfVoyages.filter((_, i) => i !== index),
-				loadPorts: formData.loadPorts.filter((_, i) => i !== index),
-				cargoDescriptions: formData.cargoDescriptions.filter(
-					(_, i) => i !== index,
-				),
-				shipsFigures: formData.shipsFigures.filter((_, i) => i !== index),
-				shoreFigures: formData.shoreFigures.filter((_, i) => i !== index),
-				ratiosShipShore: formData.ratiosShipShore.filter((_, i) => i !== index),
-				isQualifyingVoyages: formData.isQualifyingVoyages.filter(
-					(_, i) => i !== index,
-				),
-			});
-		}
-	};
+  const handleAddVoyageRecord = () => {
+    if (!canEdit) return; // Explicit structural script blocker safety guard
+    setFormData({
+      ...formData,
+      voyageNumbers: [...formData.voyageNumbers, ""],
+      datesOfVoyages: [...formData.datesOfVoyages, ""],
+      loadPorts: [...formData.loadPorts, ""],
+      cargoDescriptions: [...formData.cargoDescriptions, ""],
+      shipsFigures: [...formData.shipsFigures, ""],
+      shoreFigures: [...formData.shoreFigures, ""],
+      ratiosShipShore: [...formData.ratiosShipShore, 0],
+      isQualifyingVoyages: [...formData.isQualifyingVoyages, ""],
+    });
+  };
 
-	// Refactored Grouped Object Array Row Modifier Appender
-	const handleAddRepresentativeRow = () => {
-		setFormData({
-			...formData,
-			representatives: [
-				...formData.representatives,
-				{
-					representativeName: "",
-					representativeIdentification: "",
-					representativeEmail: "",
-				},
-			],
-		});
-	};
+  const handleVoyageItemChange = (index, value, field) => {
+    if (!canEdit) return; // Explicit structural script blocker safety guard
+    const updatedList = [...formData[field]];
+    updatedList[index] = value;
+    setFormData({ ...formData, [field]: updatedList });
+  };
 
-	// Refactored Grouped Object Row Content Value Matrix Changer
-	const handleRepresentativeRowChange = (index, field, value) => {
-		const updatedRepresentatives = [...formData.representatives];
-		updatedRepresentatives[index][field] = value;
-		setFormData({ ...formData, representatives: updatedRepresentatives });
-	};
+  const handleRemoveVoyageRecord = (index) => {
+    if (!canEdit) return; // Explicit structural script blocker safety guard
+    if (formData.voyageNumbers.length > 1) {
+      setFormData({
+        ...formData,
+        voyageNumbers: formData.voyageNumbers.filter((_, i) => i !== index),
+        datesOfVoyages: formData.datesOfVoyages.filter((_, i) => i !== index),
+        loadPorts: formData.loadPorts.filter((_, i) => i !== index),
+        cargoDescriptions: formData.cargoDescriptions.filter(
+          (_, i) => i !== index,
+        ),
+        shipsFigures: formData.shipsFigures.filter((_, i) => i !== index),
+        shoreFigures: formData.shoreFigures.filter((_, i) => i !== index),
+        ratiosShipShore: formData.ratiosShipShore.filter((_, i) => i !== index),
+        isQualifyingVoyages: formData.isQualifyingVoyages.filter(
+          (_, i) => i !== index,
+        ),
+      });
+    }
+  };
 
-	const handleRemoveRepresentativeRow = (index) => {
-		if (formData.representatives.length > 1) {
-			setFormData({
-				...formData,
-				representatives: formData.representatives.filter((_, i) => i !== index),
-			});
-		}
-	};
+  // Refactored Grouped Object Array Row Modifier Appender
+  const handleAddRepresentativeRow = () => {
+    if (!canEdit) return; // Explicit structural script blocker safety guard
+    setFormData({
+      ...formData,
+      representatives: [
+        ...formData.representatives,
+        {
+          representativeName: "",
+          representativeIdentification: "",
+          representativeEmail: "",
+        },
+      ],
+    });
+  };
+
+  // Refactored Grouped Object Row Content Value Matrix Changer
+  const handleRepresentativeRowChange = (index, field, value) => {
+    if (!canEdit) return; // Explicit structural script blocker safety guard
+    const updatedRepresentatives = [...formData.representatives];
+    updatedRepresentatives[index][field] = value;
+    setFormData({ ...formData, representatives: updatedRepresentatives });
+  };
+
+  const handleRemoveRepresentativeRow = (index) => {
+    if (!canEdit) return; // Explicit structural script blocker safety guard
+    if (formData.representatives.length > 1) {
+      setFormData({
+        ...formData,
+        representatives: formData.representatives.filter((_, i) => i !== index),
+      });
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="p-8 text-center text-xs font-serif font-bold uppercase tracking-widest text-gray-600">
+        Syncing inspector document registry matrix streams...
+      </div>
+    );
+  }
+
 
 	const inputStyle =
 		"w-full bg-[#f8f6f6] p-2 border-b border-black outline-none transition-all hover:shadow-[inset_0_2px_5px_rgba(0,0,0,0.19)] focus:border focus:shadow-[2px_2px_rgba(0,0,0,0.19)] text-xs font-serif font-medium";

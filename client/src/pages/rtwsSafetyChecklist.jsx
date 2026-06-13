@@ -3,158 +3,184 @@ import { useSelector } from "react-redux";
 import { useNavigate, useParams } from "react-router-dom";
 
 export default function RtwsSafetyChecklist() {
-	const { currentUser } = useSelector((state) => state.user);
-	const navigate = useNavigate();
-	const { id } = useParams();
+	  const { currentUser } = useSelector((state) => state.user);
+  const navigate = useNavigate();
+  const { id } = useParams();
 
-	const [error, setError] = useState(false);
-	const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [canEdit, setCanEdit] = useState(true); // Toggles view vs write configuration settings
 
-	const [formData, setFormData] = useState({
-		userReference: currentUser._id,
-		intertekInspector: "",
-		timeOfInspection: "",
-		dateOfInspection: "",
-		placeOfInspection: "",
-		clientName: "",
-		truckNumber: "",
-		transporterCompany: "",
-		driversName: "",
-		previousCargo: "",
-		driversIdentification: "",
-		cargoToLoad: "",
+  const [formData, setFormData] = useState({
+    userReference: currentUser?._id,
+    intertekInspector: "",
+    timeOfInspection: "",
+    dateOfInspection: "",
+    placeOfInspection: "",
+    clientName: "",
+    truckNumber: "",
+    transporterCompany: "",
+    driversName: "",
+    previousCargo: "",
+    driversIdentification: "",
+    cargoToLoad: "",
 
-		compartmentCapacities: [""],
-		totalCompartmentCapacity: 0, // Read-Only Auto-calculated state parameter
+    compartmentCapacities: [""],
+    totalCompartmentCapacity: 0, // Read-Only Auto-calculated state parameter
 
-		hasNoPreviousLeaks: false,
-		hasSeatBeltsFitted: false,
-		areSeatBeltsMaintained: false,
-		hasSpeedGovernorCertificate: false,
-		hasFireExtinguisher: false,
-		hasSafetyToolsAndSpareWheel: false,
-		hasStoppersFitted: false,
-		areTiresFreeFromWear: false,
-		wasRiskAssessmentCarriedOut: false,
-		wereAllDocumentsChecked: false,
-		wereCapsAndValvesRemoved: false,
-		areCompartmentsCleanDryOdorFree: false,
-		areTopSurfacesCleanAndSafe: false,
-		wereUndersideHatchesInspected: false,
-		werePersonalProtectiveEquipmentUsed: false,
-		wasRagTestPerformed: false,
-		areInternalSurfacesCleanDryOdorFree: false,
-		wereCoamingAreasInspected: false,
-		wasCertificateStatusCompleted: false,
-		wereRejectionReasonsStipulated: false,
-		wasCertificateDulyFilled: false,
-		wasCertificateCopyRetained: false,
-		wasSamePreviousCargoConfirmed: false,
-		wasForeignProductAbsenceVerified: false,
-		wasSecondOpinionSought: false,
-		wereDipsticksVerifiedAtInspection: false,
-		wereDipsticksVerifiedAtGantry: false,
-	});
+    hasNoPreviousLeaks: false,
+    hasSeatBeltsFitted: false,
+    areSeatBeltsMaintained: false,
+    hasSpeedGovernorCertificate: false,
+    hasFireExtinguisher: false,
+    hasSafetyToolsAndSpareWheel: false,
+    hasStoppersFitted: false,
+    areTiresFreeFromWear: false,
+    wasRiskAssessmentCarriedOut: false,
+    wereAllDocumentsChecked: false,
+    wereCapsAndValvesRemoved: false,
+    areCompartmentsCleanDryOdorFree: false,
+    areTopSurfacesCleanAndSafe: false,
+    wereUndersideHatchesInspected: false,
+    werePersonalProtectiveEquipmentUsed: false,
+    wasRagTestPerformed: false,
+    areInternalSurfacesCleanDryOdorFree: false,
+    wereCoamingAreasInspected: false,
+    wasCertificateStatusCompleted: false,
+    wereRejectionReasonsStipulated: false,
+    wasCertificateDulyFilled: false,
+    wasCertificateCopyRetained: false,
+    wasSamePreviousCargoConfirmed: false,
+    wasForeignProductAbsenceVerified: false,
+    wasSecondOpinionSought: false,
+    wereDipsticksVerifiedAtInspection: false,
+    wereDipsticksVerifiedAtGantry: false,
+  });
 
-	// --- REAL-TIME AUTOMATIC TOTAL CAPACITY COMPUTATION ENGINE ---
-	useEffect(() => {
-		const calculatedGrandTotal = formData.compartmentCapacities.reduce(
-			(accumulator, currentCapacityValue) =>
-				accumulator + (parseFloat(currentCapacityValue) || 0),
-			0,
-		);
+  // --- REAL-TIME AUTOMATIC TOTAL CAPACITY COMPUTATION ENGINE ---
+  useEffect(() => {
+    const calculatedGrandTotal = formData.compartmentCapacities.reduce(
+      (accumulator, currentCapacityValue) =>
+        accumulator + (parseFloat(currentCapacityValue) || 0),
+      0,
+    );
 
-		setFormData((prevFormData) => ({
-			...prevFormData,
-			totalCompartmentCapacity: calculatedGrandTotal,
-		}));
-	}, [formData.compartmentCapacities]);
+    setFormData((prevFormData) => ({
+      ...prevFormData,
+      totalCompartmentCapacity: calculatedGrandTotal,
+    }));
+  }, [formData.compartmentCapacities]);
 
-	useEffect(() => {
-		if (id) {
-			const fetchReport = async () => {
-				setLoading(true);
-				try {
-					const res = await fetch(`/api/rtwsSafetyChecklist/get/${id}`);
-					const data = await res.json();
-					if (data.success !== false) {
-						setFormData({
-							...data,
-							dateOfInspection: data.dateOfInspection
-								? data.dateOfInspection.split("T")[0]
-								: "",
-						});
-					} else {
-						setError(data.message);
-					}
-				} catch (err) {
-					setError(true);
-				} finally {
-					setLoading(false);
-				}
-			};
-			fetchReport();
-		}
-	}, [id]);
+  // Balanced effect processing hook accommodating fallback or nested response layouts
+  useEffect(() => {
+    if (id) {
+      const fetchReport = async () => {
+        setLoading(true);
+        try {
+          const res = await fetch(`/api/rtwsSafetyChecklist/get/${id}`);
+          const data = await res.json();
+          if (data.success !== false) {
+            // Check if backend uses the new wrapped style, otherwise fallback to root data object
+            const actualReport = data.report ? data.report : data;
+            
+            // Handle authorization validation check
+            const isOwnerCheck = data.isOwner !== undefined 
+              ? data.isOwner 
+              : (actualReport.userReference === currentUser?._id);
 
-	const handleSubmit = async (e) => {
-		e.preventDefault();
-		setLoading(true);
-		setError(false);
-		try {
-			const body = id ? { ...formData, _id: id } : formData;
-			const res = await fetch("/api/rtwsSafetyChecklist/save", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify(body),
-			});
-			const data = await res.json();
-			if (data.success !== false) {
-				alert("Safety Checklist Records Saved Successfully!");
-				if (!id && data._id) {
-					navigate(`/rtwsSafetyChecklist/${data._id}`);
-				}
-			} else {
-				setError(data.message);
-			}
-		} catch (err) {
-			setError("Failed to establish server communication channels");
-		} finally {
-			setLoading(false);
-		}
-	};
+            setCanEdit(isOwnerCheck);
 
-	const handleChange = (e) => {
-		const { id, value, type, checked } = e.target;
-		setFormData({
-			...formData,
-			[id]: type === "checkbox" ? checked : value,
-		});
-	};
+            setFormData({
+              ...actualReport,
+              dateOfInspection: actualReport.dateOfInspection
+                ? actualReport.dateOfInspection.split("T")
+                : "",
+            });
+          } else {
+            setError(data.message || "Failed to decode backend payload records");
+          }
+        } catch (err) {
+          setError("Network exception caught streaming record database files");
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchReport();
+    }
+  }, [id, currentUser?._id]);
 
-	const handleAddCompartmentRow = () => {
-		setFormData({
-			...formData,
-			compartmentCapacities: [...formData.compartmentCapacities, ""],
-		});
-	};
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!canEdit) return; // Explicit structural script blocker safety guard
+    setLoading(true);
+    setError(false);
+    try {
+      const body = id ? { ...formData, _id: id } : formData;
+      const res = await fetch("/api/rtwsSafetyChecklist/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (data.success !== false) {
+        alert("Safety Checklist Records Saved Successfully!");
+        if (!id && data._id) {
+          navigate(`/rtwsSafetyChecklist/${data._id}`);
+        }
+      } else {
+        setError(data.message);
+      }
+    } catch (err) {
+      setError("Failed to establish server communication channels");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-	const handleCompartmentItemChange = (index, value) => {
-		const updatedList = [...formData.compartmentCapacities];
-		updatedList[index] = value;
-		setFormData({ ...formData, compartmentCapacities: updatedList });
-	};
+  const handleChange = (e) => {
+    if (!canEdit) return; // Explicit structural script blocker safety guard
+    const { id, value, type, checked } = e.target;
+    setFormData({
+      ...formData,
+      [id]: type === "checkbox" ? checked : value,
+    });
+  };
 
-	const handleRemoveCompartmentRow = (index) => {
-		if (formData.compartmentCapacities.length > 1) {
-			setFormData({
-				...formData,
-				compartmentCapacities: formData.compartmentCapacities.filter(
-					(_, i) => i !== index,
-				),
-			});
-		}
-	};
+  const handleAddCompartmentRow = () => {
+    if (!canEdit) return; // Explicit structural script blocker safety guard
+    setFormData({
+      ...formData,
+      compartmentCapacities: [...formData.compartmentCapacities, ""],
+    });
+  };
+
+  const handleCompartmentItemChange = (index, value) => {
+    if (!canEdit) return; // Explicit structural script blocker safety guard
+    const updatedList = [...formData.compartmentCapacities];
+    updatedList[index] = value;
+    setFormData({ ...formData, compartmentCapacities: updatedList });
+  };
+
+  const handleRemoveCompartmentRow = (index) => {
+    if (!canEdit) return; // Explicit structural script blocker safety guard
+    if (formData.compartmentCapacities.length > 1) {
+      setFormData({
+        ...formData,
+        compartmentCapacities: formData.compartmentCapacities.filter(
+          (_, i) => i !== index,
+        ),
+      });
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="p-8 text-center text-xs font-serif font-bold uppercase tracking-widest text-gray-600">
+        Syncing inspector document registry matrix streams...
+      </div>
+    );
+  }
+
 
 	const inputStyle =
 		"w-full bg-[#f8f6f6] p-2 border-b border-black outline-none transition-all hover:shadow-[inset_0_2px_5px_rgba(0,0,0,0.19)] focus:border focus:shadow-[2px_2px_rgba(0,0,0,0.19)] text-xs font-serif font-medium";
