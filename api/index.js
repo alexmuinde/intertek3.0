@@ -1,39 +1,40 @@
-const dns = require("dns");
+import express from "express";
+import mongoose from "mongoose";
+import dotenv from "dotenv";
+import cookieParser from "cookie-parser";
+import dns from "dns";
+
+// Fix for database DNS lookup issues on serverless architectures
 dns.setServers(["1.1.1.1", "8.8.8.8"]);
 
-const express = require("express");
-const mongoose = require("mongoose");
-const dotenv = require("dotenv");
-const cookieParser = require("cookie-parser"); // 1. Import cookie-parser
-const userRouter = require("./routes/userRoute.js");
-const authRouter = require("./routes/authRoute.js");
-const weighBridgeRouter = require("./routes/weighBridgeRoute.js");
-const statementOfFactsRouter = require("./routes/statementOfFactsRoute.js");
-const sealingReportRouter = require("./routes/sealingReportRoute.js");
-const vesselExperienceFactorRouter = require("./routes/vesselExperienceFactorRoute.js");
-const vesselDischargeStatusRouter = require("./routes/vesselDischargeStatusRoute.js");
-const shoreTankQuantityReportRouter = require("./routes/shoreTankQuantityReportRoute.js");
-const shoreTankMeasurementDataRouter = require("./routes/shoreTankMeasurementDataRoute.js");
-const shoreTankCleanlinessReportRouter = require("./routes/shoreTankCleanlinessReportRoute.js");
-const shipsTanksUllageReportRouter = require("./routes/shipsTanksUllageReportRoute.js");
-const rtwsSafetyChecklistRouter = require("./routes/rtwsSafetyChecklistRoute.js");
-const receiptOfSealedSamplesRouter = require("./routes/receiptOfSealedSamplesRoute.js");
-const pumpingPressureLogRouter = require("./routes/pumpingPressureLogRoute.js");
-const pipelineInspectionReportRouter = require("./routes/pipelineInspectionReportRoute.js");
-const noticeOfApparentDiscrepancyRouter = require("./routes/noticeOfApparentDiscrepancyRoute.js");
-const letterOfProtestSlowRateRouter = require("./routes/letterOfProtestSlowRateRoute.js");
-const letterOfProtestShoreFinalOutturnFiguresRouter = require("./routes/letterOfProtestShoreFinalOutturnFiguresRoute.js");
-const letterOfProtestGeneralRouter = require("./routes/letterOfProtestGeneralRoute.js");
-const letterOfAssuranceRouter = require("./routes/letterOfAssuranceRoute.js");
-const handOverReportRouter = require("./routes/handOverReportRoute.js");
-const endOfPipelineSampleReportRouter = require("./routes/endOfPipelineSampleReportRoute.js");
-const dischargeProcedureSequenceRouter = require("./routes/dischargeProcedureSequenceRoute.js");
+// Route Imports
+import userRouter from "./routes/userRoute.js";
+import authRouter from "./routes/authRoute.js";
+import weighBridgeRouter from "./routes/weighBridgeRoute.js";
+import statementOfFactsRouter from "./routes/statementOfFactsRoute.js";
+import sealingReportRouter from "./routes/sealingReportRoute.js";
+import vesselExperienceFactorRouter from "./routes/vesselExperienceFactorRoute.js";
+import vesselDischargeStatusRouter from "./routes/vesselDischargeStatusRoute.js";
+import shoreTankQuantityReportRouter from "./routes/shoreTankQuantityReportRoute.js";
+import shoreTankMeasurementDataRouter from "./routes/shoreTankMeasurementDataRoute.js";
+import shoreTankCleanlinessReportRouter from "./routes/shoreTankCleanlinessReportRoute.js";
+import shipsTanksUllageReportRouter from "./routes/shipsTanksUllageReportRoute.js";
+import rtwsSafetyChecklistRouter from "./routes/rtwsSafetyChecklistRoute.js";
+import receiptOfSealedSamplesRouter from "./routes/receiptOfSealedSamplesRoute.js";
+import pumpingPressureLogRouter from "./routes/pumpingPressureLogRoute.js";
+import pipelineInspectionReportRouter from "./routes/pipelineInspectionReportRoute.js";
+import noticeOfApparentDiscrepancyRouter from "./routes/noticeOfApparentDiscrepancyRoute.js";
+import letterOfProtestSlowRateRouter from "./routes/letterOfProtestSlowRateRoute.js";
+import letterOfProtestShoreFinalOutturnFiguresRouter from "./routes/letterOfProtestShoreFinalOutturnFiguresRoute.js";
+import letterOfProtestGeneralRouter from "./routes/letterOfProtestGeneralRoute.js";
+import letterOfAssuranceRouter from "./routes/letterOfAssuranceRoute.js";
+import handOverReportRouter from "./routes/handOverReportRoute.js";
+import endOfPipelineSampleReportRouter from "./routes/endOfPipelineSampleReportRoute.js";
+import dischargeProcedureSequenceRouter from "./routes/dischargeProcedureSequenceRoute.js";
 
 dotenv.config();
 
-//const dns = require("dns");
-//dns.setServers(["1.1.1.1", "8.8.8.8"]);
-
+// Connect to Database
 mongoose
 	.connect(process.env.MONGO)
 	.then(() => console.log("Connected to MongoDB!"))
@@ -43,11 +44,11 @@ mongoose
 
 const app = express();
 
-// --- MIDDLEWARE SECTION ---
+// Middleware
 app.use(express.json());
-app.use(cookieParser()); // 2. Initialize cookie-parser here
+app.use(cookieParser());
 
-// --- ROUTES SECTION ---
+// API Endpoints
 app.use("/api/user", userRouter);
 app.use("/api/auth", authRouter);
 app.use("/api/weighBridge", weighBridgeRouter);
@@ -65,17 +66,14 @@ app.use("/api/pumpingPressureLog", pumpingPressureLogRouter);
 app.use("/api/pipelineInspectionReport", pipelineInspectionReportRouter);
 app.use("/api/noticeOfApparentDiscrepancy", noticeOfApparentDiscrepancyRouter);
 app.use("/api/letterOfProtestSlowRate", letterOfProtestSlowRateRouter);
-app.use(
-	"/api/letterOfProtestShoreFinalOutturnFigures",
-	letterOfProtestShoreFinalOutturnFiguresRouter,
-);
+app.use("/api/letterOfProtestShoreFinalOutturnFigures", letterOfProtestShoreFinalOutturnFiguresRouter);
 app.use("/api/letterOfProtestGeneral", letterOfProtestGeneralRouter);
 app.use("/api/letterOfAssurance", letterOfAssuranceRouter);
 app.use("/api/handOverReport", handOverReportRouter);
 app.use("/api/endOfPipelineSampleReport", endOfPipelineSampleReportRouter);
 app.use("/api/dischargeProcedureSequence", dischargeProcedureSequenceRouter);
 
-// --- ERROR HANDLING ---
+// Global Error Handler Middleware
 app.use((err, req, res, next) => {
 	const statusCode = err.statusCode || 500;
 	const message = err.message || "Internal Server Error";
@@ -86,8 +84,11 @@ app.use((err, req, res, next) => {
 	});
 });
 
-app.listen(3000, () => {
-	console.log("Server is running on port 3000!!!");
-});
+// Conditionally listen ONLY when running locally, NOT on Vercel serverless
+if (process.env.NODE_ENV !== 'production') {
+	app.listen(3000, () => {
+		console.log("Local Server running on port 3000!!!");
+	});
+}
 
-module.exports = app;
+export default app;
