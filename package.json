@@ -6,9 +6,9 @@
   "scripts": {
     "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
     "dev:server": "nodemon api/index.js",
-    "dev:client": "npm run dev --prefix client",
-    "build": "cd client && vite build --outDir dist",
-    "preview": "npm run preview --prefix client"
+    "dev:client": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.11.2",
