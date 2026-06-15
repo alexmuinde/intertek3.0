@@ -4,9 +4,7 @@ dns.setServers(["1.1.1.1", "8.8.8.8"]);
 const express = require("express");
 const mongoose = require("mongoose");
 const dotenv = require("dotenv");
-const cookieParser = require("cookie-parser");
-
-// Route Imports
+const cookieParser = require("cookie-parser"); // 1. Import cookie-parser
 const userRouter = require("./routes/userRoute.js");
 const authRouter = require("./routes/authRoute.js");
 const weighBridgeRouter = require("./routes/weighBridgeRoute.js");
@@ -33,48 +31,23 @@ const dischargeProcedureSequenceRouter = require("./routes/dischargeProcedureSeq
 
 dotenv.config();
 
-// Track database connection state globally for serverless environments
-let isConnected = false;
+//const dns = require("dns");
+//dns.setServers(["1.1.1.1", "8.8.8.8"]);
 
-const connectToDatabase = async () => {
-	if (isConnected) {
-		return;
-	}
-
-	try {
-		const db = await mongoose.connect(process.env.MONGO, {
-			bufferCommands: false,
-		});
-		
-		// Fix: Check connection state cleanly before flipping the global variable
-		if (db.connections[0].readyState === 1) {
-			console.log("Connected to MongoDB!");
-			isConnected = true; // Flip state here to freeze future logging spam
-		}
-	} catch (err) {
+mongoose
+	.connect(process.env.MONGO)
+	.then(() => console.log("Connected to MongoDB!"))
+	.catch((err) => {
 		console.error("DATABASE CONNECTION ERROR:", err.message);
-		throw err;
-	}
-};
-
+	});
 
 const app = express();
 
-// Middleware
+// --- MIDDLEWARE SECTION ---
 app.use(express.json());
-app.use(cookieParser());
+app.use(cookieParser()); // 2. Initialize cookie-parser here
 
-// Serverless Connection Guard: Ensures database connectivity before matching any routes
-app.use(async (req, res, next) => {
-	try {
-		await connectToDatabase();
-		next();
-	} catch (error) {
-		next(error);
-	}
-});
-
-// API Endpoints
+// --- ROUTES SECTION ---
 app.use("/api/user", userRouter);
 app.use("/api/auth", authRouter);
 app.use("/api/weighBridge", weighBridgeRouter);
@@ -92,14 +65,17 @@ app.use("/api/pumpingPressureLog", pumpingPressureLogRouter);
 app.use("/api/pipelineInspectionReport", pipelineInspectionReportRouter);
 app.use("/api/noticeOfApparentDiscrepancy", noticeOfApparentDiscrepancyRouter);
 app.use("/api/letterOfProtestSlowRate", letterOfProtestSlowRateRouter);
-app.use("/api/letterOfProtestShoreFinalOutturnFigures", letterOfProtestShoreFinalOutturnFiguresRouter);
+app.use(
+	"/api/letterOfProtestShoreFinalOutturnFigures",
+	letterOfProtestShoreFinalOutturnFiguresRouter,
+);
 app.use("/api/letterOfProtestGeneral", letterOfProtestGeneralRouter);
 app.use("/api/letterOfAssurance", letterOfAssuranceRouter);
 app.use("/api/handOverReport", handOverReportRouter);
 app.use("/api/endOfPipelineSampleReport", endOfPipelineSampleReportRouter);
 app.use("/api/dischargeProcedureSequence", dischargeProcedureSequenceRouter);
 
-// Global Error Handler
+// --- ERROR HANDLING ---
 app.use((err, req, res, next) => {
 	const statusCode = err.statusCode || 500;
 	const message = err.message || "Internal Server Error";
@@ -110,11 +86,8 @@ app.use((err, req, res, next) => {
 	});
 });
 
-// Conditionally listen ONLY when running locally, NOT on Vercel production serverless
-if (process.env.NODE_ENV !== 'production') {
-	app.listen(3000, () => {
-		console.log("Server is running on port 3000!!!");
-	});
-}
+app.listen(3000, () => {
+	console.log("Server is running on port 3000!!!");
+});
 
 module.exports = app;
