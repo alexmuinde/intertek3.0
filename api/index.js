@@ -33,18 +33,46 @@ const dischargeProcedureSequenceRouter = require("./routes/dischargeProcedureSeq
 
 dotenv.config();
 
-mongoose
-	.connect(process.env.MONGO)
-	.then(() => console.log("Connected to MongoDB!"))
-	.catch((err) => {
+// Track database connection state globally for serverless environments
+let isConnected = false;
+
+const connectToDatabase = async () => {
+	if (isConnected) {
+		return;
+	}
+
+	try {
+		const db = await mongoose.connect(process.env.MONGO, {
+			bufferCommands: false,
+		});
+		
+		// Fix: Check connection state cleanly before flipping the global variable
+		if (db.connections[0].readyState === 1) {
+			console.log("Connected to MongoDB!");
+			isConnected = true; // Flip state here to freeze future logging spam
+		}
+	} catch (err) {
 		console.error("DATABASE CONNECTION ERROR:", err.message);
-	});
+		throw err;
+	}
+};
+
 
 const app = express();
 
 // Middleware
 app.use(express.json());
 app.use(cookieParser());
+
+// Serverless Connection Guard: Ensures database connectivity before matching any routes
+app.use(async (req, res, next) => {
+	try {
+		await connectToDatabase();
+		next();
+	} catch (error) {
+		next(error);
+	}
+});
 
 // API Endpoints
 app.use("/api/user", userRouter);
