@@ -1,10 +1,10 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Home from "./pages/home";
-import SignIn from "./pages/signIn";
-import SignUp from "./pages/signUp";
-import About from "./pages/about";
-import Profile from "./pages/profile";
-import Header from "./components/header";
+import Home from "./pages/Home";
+import SignIn from "./pages/SignIn";
+import SignUp from "./pages/SignUp";
+import About from "./pages/About";
+import Profile from "./pages/Profile";
+import Header from "./components/Header";
 import PrivateRoute from "./components/PrivateRoute";
 import WeighBridge from "./pages/weighBridge";
 import StatementOfFacts from "./pages/statementOfFacts";
